@@ -23,21 +23,23 @@ emitted_wavelengths = ...
 observed_wavelengths = ...
     @(emitted_wavelengths,  z) ( emitted_wavelengths * (1 + z));
 
+lambda_add = 160;
+
 % file loading parameters
-loading_min_lambda = 910;                     % range of rest wavelengths to load  Å
-loading_max_lambda = 1217;
+loading_min_lambda = 700; %910                % range of rest wavelengths to load  Å
+loading_max_lambda = 1217 + lambda_add;
 
 % preprocessing parameters
 z_qso_cut      = 2.15;                        % filter out QSOs with z less than this threshold
 min_num_pixels = 200;                         % minimum number of non-masked pixels
 
 % normalization parameters
-normalization_min_lambda = 1310;              % range of rest wavelengths to use   Å
-normalization_max_lambda = 1325;              %   for flux normalization
+normalization_min_lambda = 1111.75;              % range of rest wavelengths to use   Å
+normalization_max_lambda = 1215.75 + lambda_add; %   for flux normalization
 
 % null model parameters
-min_lambda         =  911.75;                 % range of rest wavelengths to       Å
-max_lambda         = 1215.75;                 %   model
+min_lambda         =  700;                 % range of rest wavelengths to       Å
+max_lambda         = 1215.75 + lambda_add;                 %   model
 dlambda            =    0.25;                 % separation of wavelength grid      Å
 k                  = 20;                      % rank of non-diagonal contribution
 max_noise_variance = 1^2;                     % maximum pixel noise allowed during model training
