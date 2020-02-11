@@ -61,10 +61,10 @@ for i = 1:num_quasars
   ind(min(available_ind(available_ind > find(ind, 1, 'last' )))) = true;
   ind(max(available_ind(available_ind < find(ind, 1, 'first')))) = true;
 
-  all_wavelengths{i}    =    this_wavelengths(ind);
-  all_flux{i}           =           this_flux(ind);
-  all_noise_variance{i} = this_noise_variance(ind);
-  all_pixel_mask{i}     =     this_pixel_mask(ind);
+  all_wavelengths{i}    =    this_wavelengths;%no longer (ind)
+  all_flux{i}           =           this_flux;
+  all_noise_variance{i} = this_noise_variance;
+  all_pixel_mask{i}     =     this_pixel_mask;
 
   fprintf('loaded quasar %i of %i (%i/%i/%04i)\n', ...
           i, num_quasars, plates(i), mjds(i), fiber_ids(i));

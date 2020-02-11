@@ -1,6 +1,12 @@
 % set_parameters: sets various parameters for the DLA detection
 % pipeline
 
+%flags for changes
+extrapolate_subdla = 0; %0 = off, 1 = on
+add_proximity_zone = 0;
+integrate          = 1;
+optTag = [num2str(integrate), num2str(extrapolate_subdla), num2str(add_proximity_zone)];
+
 % physical constants
 lya_wavelength = 1215.6701;                   % Lyman alpha transition wavelength  Å
 lyb_wavelength = 1025.7223;                   % Lyman beta  transition wavelength  Å
@@ -45,7 +51,7 @@ minFunc_options =               ...           % optimization options for model f
            'MaxFunEvals', 4000);
 
 % DLA model parameters: parameter samples
-num_dla_samples     = 10000;                  % number of parameter samples
+num_dla_samples     = 100000;                  % number of parameter samples
 alpha               = 0.9;                    % weight of KDE component in mixture
 uniform_min_log_nhi = 20.0;                   % range of column density samples    [cm⁻²]
 uniform_max_log_nhi = 23.0;                   % from uniform distribution
@@ -64,7 +70,8 @@ num_lines = 3;                                % number of members of the Lyman s
 
 max_z_cut = kms_to_z(3000);                   % max z_DLA = z_QSO - max_z_cut
 max_z_dla = @(wavelengths, z_qso) ...         % determines maximum z_DLA to search
-    (max(wavelengths) / lya_wavelength - 1) - max_z_cut;
+    min((max(wavelengths) / lya_wavelength - 1) - max_z_cut,...
+    z_qso - max_z_cut);
 
 min_z_cut = kms_to_z(3000);                   % min z_DLA = z_Ly∞ + min_z_cut
 min_z_dla = @(wavelengths, z_qso) ...         % determines minimum z_DLA to search
@@ -89,4 +96,5 @@ dla_catalog_directory = @(name) ...
     sprintf('%s/dla_catalogs/%s/processed', base_directory, name);
 
 % replace with @(varargin) (fprintf(varargin{:})) to show debug statements
+%fprintf_debug = @(varargin) (fprintf(varargin{:}));
 fprintf_debug = @(varargin) ([]);
