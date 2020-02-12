@@ -220,9 +220,8 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         
         this_omega2 = this_omega2 .* this_scaling_factor.^2;
         
-        %no noise after ly_alpha peak @ 1256.6 in rest frame
-        ly_alpha = 1256.6;
-        ind_w = find(this_rest_wavelengths > ly_alpha);
+        %no noise after ly_alpha peak @ 1215.67 in rest frame
+        ind_w = find(this_rest_wavelengths > lya_wavelength);
         this_omega2(ind_w) = .001;
         
         % baseline: probability of no DLA model
