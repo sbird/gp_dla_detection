@@ -23,11 +23,11 @@ emitted_wavelengths = ...
 observed_wavelengths = ...
     @(emitted_wavelengths,  z) ( emitted_wavelengths * (1 + z));
 
-lambda_add = 160;
-
 % file loading parameters
-loading_min_lambda = 700; %910                % range of rest wavelengths to load  Å
-loading_max_lambda = 1217 + lambda_add;
+loading_min_lambda = 700;                % range of rest wavelengths to load  Å
+loading_max_lambda = 2400;                  % This maximum is set so we include CIV.
+% The maximum allowed is set so that even if the peak is redshifted off the end, the
+% quasar still has data in the range
 
 % preprocessing parameters
 z_qso_cut      = 2.15;                        % filter out QSOs with z less than this threshold
