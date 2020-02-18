@@ -62,6 +62,7 @@ clear('all_wavelengths', 'all_flux', 'all_noise_variance', 'all_pixel_mask');
 
 % mask noisy pixels
 ind = (rest_noise_variances > max_noise_variance);
+fprintf("Masking %g of pixels\n", nnz(ind)*1./numel(ind));
 lya_1pzs(ind)             = nan;
 rest_fluxes(ind)          = nan;
 rest_noise_variances(ind) = nan;
