@@ -31,16 +31,16 @@ loading_max_lambda = 1217 + lambda_add;
 
 % preprocessing parameters
 z_qso_cut      = 2.15;                        % filter out QSOs with z less than this threshold
-min_num_pixels = 200;                         % minimum number of non-masked pixels
+min_num_pixels = 400;                         % minimum number of non-masked pixels
 
 % normalization parameters
 normalization_min_lambda = 1111.75;              % range of rest wavelengths to use   Å
 normalization_max_lambda = 1215.75 + lambda_add; %   for flux normalization
 
 % null model parameters
-min_lambda         =  700;                 % range of rest wavelengths to       Å
-max_lambda         = 1215.75 + lambda_add;                 %   model
-dlambda            =    0.25;                 % separation of wavelength grid      Å
+min_lambda         =  910;                 % range of rest wavelengths to       Å
+max_lambda         = 1600;                 %   model
+dlambda            = 0.25;                 % separation of wavelength grid      Å
 k                  = 20;                      % rank of non-diagonal contribution
 max_noise_variance = 1^2;                     % maximum pixel noise allowed during model training
 
