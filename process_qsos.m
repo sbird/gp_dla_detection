@@ -93,7 +93,8 @@ tau_0 = exp(log_tau_0);
 beta  = exp(log_beta);
 
 z_list                   = [1:length(offset_samples_qso)];
-all_mus = cell(size(z_list));
+%Debug output
+%all_mus = cell(size(z_list));
 
 fluxes                   = cell(length(z_list), 1);
 rest_wavelengths         = cell(length(z_list), 1);
@@ -209,8 +210,9 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         % interpolate model onto given wavelengths
         this_mu = mu_interpolator( this_rest_wavelengths);
         this_M  =  M_interpolator({this_rest_wavelengths, 1:k});
-        all_mus{z_list_ind} = this_mu;
-        all_Ms{z_list_ind} = this_M;
+        %Debug output
+        %all_mus{z_list_ind} = this_mu;
+        %all_Ms{z_list_ind} = this_M;
         
         this_log_omega = log_omega_interpolator(this_rest_wavelengths);
         this_omega2 = exp(2 * this_log_omega);
