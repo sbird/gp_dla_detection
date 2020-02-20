@@ -91,7 +91,9 @@ log_posteriors_no_dla         = nan(num_quasars, 1);
 log_posteriors_dla            = nan(num_quasars, 1);
 z_true                        = nan(num_quasars, 1);
 dla_true                        = nan(num_quasars, 1);
-
+z_map                         = nan(num_quasars, 1);
+z_dla_map                         = nan(num_quasars, 1);
+n_hi_map                         = nan(num_quasars, 1);
 signal_to_noise               = nan(num_quasars, 1);
 
 c_0   = exp(log_c_0);
@@ -135,6 +137,7 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     this_pixel_signal_to_noise = sqrt(this_noise_variance) ./ abs(this_flux);
     signal_to_noise(quasar_num) = mean(this_pixel_signal_to_noise);
     %
+    used_z_dla                         = nan(length(offset_samples_qso), 1);
     
     for z_list_ind = 1:length(offset_samples_qso) %variant redshift in quasars
         z_qso = offset_samples_qso(z_list_ind);
