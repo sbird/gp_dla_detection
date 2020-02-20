@@ -64,6 +64,10 @@ dla_inds = catalog.dla_inds('dr12q_visual');
 dla_inds = dla_inds(test_ind);
 
 num_quasars = numel(z_qsos);
+if exist('qso_ind', 'var') == 0
+    qso_ind = 1:1:floor(num_quasars/100);
+end
+num_quasars = numel(qso_ind);
 
 %load('./test/M.mat');
 % preprocess model interpolants
