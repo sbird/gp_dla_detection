@@ -85,6 +85,8 @@ sample_log_posteriors_no_dla  = nan(num_quasars, num_dla_samples);
 sample_log_posteriors_dla     = nan(num_quasars, num_dla_samples);
 log_posteriors_no_dla         = nan(num_quasars, 1);
 log_posteriors_dla            = nan(num_quasars, 1);
+z_true                        = nan(num_quasars, 1);
+dla_true                        = nan(num_quasars, 1);
 
 signal_to_noise               = nan(num_quasars, 1);
 
