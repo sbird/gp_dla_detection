@@ -108,7 +108,7 @@ this_p_dlas              = zeros(length(z_list), 1);
 
 quasar_ind = 1;
 try
-    load(['./test/testmats/mcmc/curDLA_', optTagFull, '.mat']); %checkmarking code
+    load(['./test/testmats/mcmc/curDLA_', optTag, '.mat']); %checkmarking code
 catch ME
     0;
 end
@@ -322,7 +322,7 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     fprintf(' took %0.3fs.\n', toc);
     
     if mod(quasar_ind, 50) == 0
-        save(['./test/testmats/mcmc/curDLA_', optTagFull, '.mat'], 'log_posteriors_dla', 'log_posteriors_no_dla', 'z_true', 'dla_true', 'quasar_ind', 'quasar_num',...
+        save(['./test/testmats/mcmc/curDLA_', optTag, '.mat'], 'log_posteriors_dla', 'log_posteriors_no_dla', 'z_true', 'dla_true', 'quasar_ind', 'quasar_num',...
             'sample_log_likelihoods_dla', 'sample_log_likelihoods_no_dla', 'sample_z_dlas', 'nhi_samples', 'offset_samples_qso', 'offset_samples', 'z_map', 'signal_to_noise', 'z_dla_map', 'n_hi_map');
     end
 end
@@ -354,6 +354,6 @@ variables_to_save = {'training_release', 'training_set_name', ...
 
 filename = sprintf('%s/processed_qsos_%s-%s', ...
     processed_directory(release), ...
-    test_set_name, optTagFull);
+    test_set_name, optTag);
 
 save(filename, variables_to_save{:}, '-v7.3');
