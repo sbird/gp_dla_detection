@@ -158,6 +158,7 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         min_observed_lambda = max(min_observed_lambda, min(this_wavelengths));
         vq_range = min_observed_lambda:(max_observed_lambda - ...
             min_observed_lambda)/rframe_len:max_observed_lambda;
+        vq_range = vq_range';
         this_flux = interp1(this_wavelengths, this_flux, vq_range);
         this_noise_variance = interp1(this_wavelengths, this_noise_variance, vq_range);
         this_wavelengths = vq_range;
