@@ -94,7 +94,7 @@ c_0   = exp(log_c_0);
 tau_0 = exp(log_tau_0);
 beta  = exp(log_beta);
 
-z_list                   = [1:length(offset_samples_qso)];
+z_list                   = 1:length(offset_samples_qso);
 %Debug output
 %all_mus = cell(size(z_list));
 
@@ -152,8 +152,8 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         max_observed_lambda = min(max_observed_lambda, max(this_wavelengths));
         min_observed_lambda = observed_wavelengths(min_lambda, z_qso);
         min_observed_lambda = max(min_observed_lambda, min(this_wavelengths));
-        vq_range = [min_observed_lambda:(max_observed_lambda - ...
-            min_observed_lambda)/rframe_len:max_observed_lambda]';
+        vq_range = min_observed_lambda:(max_observed_lambda - ...
+            min_observed_lambda)/rframe_len:max_observed_lambda;
         this_flux = interp1(this_wavelengths, this_flux, vq_range);
         this_noise_variance = interp1(this_wavelengths, this_noise_variance, vq_range);
         this_wavelengths = vq_range;
