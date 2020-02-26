@@ -79,7 +79,7 @@ rest_fluxes(ind)          = nan;
 rest_noise_variances(ind) = nan;
 
 % Filter out spectra which have too many NaN pixels
-ind = sum(isnan(centered_rest_fluxes),2) < num_rest_pixels-min_num_pixels;
+ind = sum(isnan(rest_fluxes),2) < num_rest_pixels-min_num_pixels;
 rest_fluxes = rest_fluxes(ind, :);
 rest_noise_variances = rest_noise_variances(ind,:);
 lya_1pzs = lya_1pzs(ind,:);
