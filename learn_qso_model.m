@@ -42,10 +42,21 @@ for i = 1:num_quasars
   this_noise_variance = all_noise_variance{i}';
   this_pixel_mask     =     all_pixel_mask{i}';
 
+  this_rest_wavelengths = emitted_wavelengths(this_wavelengths, z_qso);
+
+  % Filter out the desired wavelengths since this isn't done in preloading
+  % any more.
+  ind = (this_rest_wavelengths >= min_lambda) & ...
+         (this_rest_wavelengths <= max_lambda);
+
+  this_rest_wavelengths = this_rest_wavelengths(ind);
+  this_wavelengths = this_wavelengths(ind);
+  this_flux = this_flux(ind);
+  this_noise_variance = this_noise_variance(ind);
+  this_pixel_mask = this_pixel_mask(ind);
+
   this_flux(this_pixel_mask)           = nan;
   this_noise_variance(this_pixel_mask) = nan;
-
-  this_rest_wavelengths = emitted_wavelengths(this_wavelengths, z_qso);
 
   lya_1pzs(i, :) = ...
       interp1(this_rest_wavelengths, ...
@@ -67,6 +78,11 @@ lya_1pzs(ind)             = nan;
 rest_fluxes(ind)          = nan;
 rest_noise_variances(ind) = nan;
 
+% Filter out spectra which have too many NaN pixels
+ind = sum(isnan(centered_rest_fluxes),2) < num_rest_pixels-min_num_pixels;
+rest_fluxes = rest_fluxes(ind, :);
+rest_noise_variances = rest_noise_variances(ind,:);
+lya_1pzs = lya_1pzs(ind,:);
 % find empirical mean vector and center data
 mu = nanmean(rest_fluxes);
 centered_rest_fluxes = bsxfun(@minus, rest_fluxes, mu);
