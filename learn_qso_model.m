@@ -44,17 +44,6 @@ for i = 1:num_quasars
 
   this_rest_wavelengths = emitted_wavelengths(this_wavelengths, z_qso);
 
-  % Filter out the desired wavelengths since this isn't done in preloading
-  % any more.
-  ind = (this_rest_wavelengths >= min_lambda) & ...
-         (this_rest_wavelengths <= max_lambda);
-
-  this_rest_wavelengths = this_rest_wavelengths(ind);
-  this_wavelengths = this_wavelengths(ind);
-  this_flux = this_flux(ind);
-  this_noise_variance = this_noise_variance(ind);
-  this_pixel_mask = this_pixel_mask(ind);
-
   this_flux(this_pixel_mask)           = nan;
   this_noise_variance(this_pixel_mask) = nan;
 
