@@ -28,8 +28,8 @@ for i = 1:num_quasars
   ind = (this_wavelengths >= normalization_min_lambda * (z_qso_cut) + 1) & ... // min allowable in observer frame
         (this_wavelengths <= normalization_max_lambda * (z_qso_training_max_cut) + 1) & ... //max allowable in observer frame
         (~this_pixel_mask);
-
-  this_norm = nanmax(medfilt1(this_flux(ind)));
+  medfiltwidth = (normalization_max_lambda - normalization_min_lambda)/dlambda;
+  this_norm = nanmax(medfilt1(this_flux(ind), medfiltwidth, 'omitnan', 'truncate'));
 
   %{
   this_rest_wavelengths = emitted_wavelengths(this_wavelengths, z_qsos(i));
