@@ -69,14 +69,14 @@ rest_noise_variances(ind) = nan;
 
 % Filter out spectra which have too many NaN pixels
 ind = sum(isnan(rest_fluxes),2) < num_rest_pixels-min_num_pixels;
-fprintf("Filtering %g quasars\n", length(rest_fluxes) - length(ind));
+fprintf("Filtering %g quasars\n", length(rest_fluxes) - nnz(ind));
 rest_fluxes = rest_fluxes(ind, :);
 rest_noise_variances = rest_noise_variances(ind,:);
 lya_1pzs = lya_1pzs(ind,:);
 % Check for columns which contain only NaN on either end.
 nancolfrac = sum(isnan(rest_fluxes),1)/ nnz(ind);
 fprintf("Columns with nan > 0.9: ");
-find(nancolfrac > 0.9)
+max(find(nancolfrac > 0.9))
 % find empirical mean vector and center data
 mu = nanmean(rest_fluxes);
 centered_rest_fluxes = bsxfun(@minus, rest_fluxes, mu);
