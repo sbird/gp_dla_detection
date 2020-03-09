@@ -8,8 +8,7 @@ catalog = load(sprintf('%s/catalog', processed_directory(training_release)));
 % load preprocessed QSOs
 variables_to_load = {'all_wavelengths', 'all_flux', 'all_noise_variance', ...
                      'all_pixel_mask'};
-load(sprintf('%s/preloaded_qsos', processed_directory(training_release)), ...
-     variables_to_load{:});
+preqsos = matfile(sprintf('%s/preloaded_qsos.mat', processed_directory(training_release)));
 
 % determine which spectra to use for training; allow string value for
 % train_ind
@@ -18,11 +17,16 @@ if (ischar(train_ind))
 end
 
 % select training vectors
+all_wavelengths    =          preqsos.all_wavelengths;
 all_wavelengths    =    all_wavelengths(train_ind, :);
+all_flux           =                 preqsos.all_flux;
 all_flux           =           all_flux(train_ind, :);
+all_noise_variance =       preqsos.all_noise_variance;
 all_noise_variance = all_noise_variance(train_ind, :);
+all_pixel_mask     =           preqsos.all_pixel_mask;
 all_pixel_mask     =     all_pixel_mask(train_ind, :);
-z_qsos             =     catalog.z_qsos(train_ind);
+z_qsos             =        catalog.z_qsos(train_ind);
+clear preqsos
 
 num_quasars = numel(z_qsos);
 
