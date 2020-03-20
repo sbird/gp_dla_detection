@@ -46,20 +46,12 @@ k                  = 20;                      % rank of non-diagonal contributio
 max_noise_variance = 1^2;                     % maximum pixel noise allowed during model training
 
 % optimization parameters
-initial_c_0   = 0.1;                          % initial guess for c₀
-initial_tau_0 = 0.0023;                       % initial guess for τ₀
-initial_beta  = 3.65;                         % initial guess for β
 minFunc_options =               ...           % optimization options for model fitting
     struct('MaxIter',     2000, ...
            'MaxFunEvals', 4000);
 
 % DLA model parameters: parameter samples
-num_dla_samples     = 100000;                  % number of parameter samples
-alpha               = 0.9;                    % weight of KDE component in mixture
-uniform_min_log_nhi = 20.0;                   % range of column density samples    [cm⁻²]
-uniform_max_log_nhi = 23.0;                   % from uniform distribution
-fit_min_log_nhi     = 20.0;                   % range of column density samples    [cm⁻²]
-fit_max_log_nhi     = 22.0;                   % from fit to log PDF
+num_zqso_samples     = 10000;                  % number of parameter samples
 
 % model prior parameters
 prior_z_qso_increase = kms_to_z(30000);       % use QSOs with z < (z_QSO + x) for prior
@@ -94,9 +86,6 @@ spectra_directory   = @(release) ...
 
 processed_directory = @(release) ...
     sprintf('%s/%s/processed', base_directory, release);
-
-dla_catalog_directory = @(name) ...
-    sprintf('%s/dla_catalogs/%s/processed', base_directory, name);
 
 % replace with @(varargin) (fprintf(varargin{:})) to show debug statements
 %fprintf_debug = @(varargin) (fprintf(varargin{:}));
