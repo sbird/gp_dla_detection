@@ -172,20 +172,6 @@ is:
 The learned qso model is stored in
 `data/[training_release]/processed/learned_qso_model_[training_set_name].mat`.
 
-We also need to specify a set of DLA parameter samples for the DLA
-model. This is handled by the `generate_dla_samples` script.
-
-Relevant parameters in `set_parameters` that can be tweaked if
-desired:
-
-    num_zqso_samples     = 10000;                  % number of parameter samples
-
-When ready, the MATLAB code to generate the DLA model parameter
-samples is:
-
-    training_release  = 'dr12q';
-    generate_dla_samples;
-
 Processing spectra for DLA detection
 ------------------------------------
 
@@ -213,6 +199,11 @@ all DR12Q spectra that were not filtered:
     test_ind = '(catalog.filter_flags == 0)';
 
 When ready, the selected spectra can be processed with `process_qsos`.
+Relevant parameters in `set_parameters` that can be tweaked if
+desired:
+
+    num_zqso_samples     = 10000;                  % number of parameter samples
+
 This script will write the results in
 `data/[release]/processed_qsos_[test_set_name].mat`.
 
