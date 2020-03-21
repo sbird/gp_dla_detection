@@ -50,29 +50,7 @@ minFunc_options =               ...           % optimization options for model f
     struct('MaxIter',     2000, ...
            'MaxFunEvals', 4000);
 
-% DLA model parameters: parameter samples
 num_zqso_samples     = 10000;                  % number of parameter samples
-
-% model prior parameters
-prior_z_qso_increase = kms_to_z(30000);       % use QSOs with z < (z_QSO + x) for prior
-
-% instrumental broadening parameters
-width = 3;                                    % width of Gaussian broadening (# pixels)
-pixel_spacing = 1e-4;                         % wavelength spacing of pixels in dex
-
-% DLA model parameters: absorber range and model
-num_lines = 3;                                % number of members of the Lyman series to use
-
-max_z_cut = kms_to_z(3000);                   % max z_DLA = z_QSO - max_z_cut
-max_z_dla = @(wavelengths, z_qso) ...         % determines maximum z_DLA to search
-    min((max(wavelengths) / lya_wavelength - 1) - max_z_cut,...
-    z_qso - max_z_cut);
-
-min_z_cut = kms_to_z(3000);                   % min z_DLA = z_Ly∞ + min_z_cut
-min_z_dla = @(wavelengths, z_qso) ...         % determines minimum z_DLA to search
-    max(min(wavelengths) / lya_wavelength - 1,                          ...
-        observed_wavelengths(lyman_limit, z_qso) / lya_wavelength - 1 + ...
-        min_z_cut);
 
 % base directory for all data
 base_directory = 'data';
