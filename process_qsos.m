@@ -22,12 +22,12 @@ z_freq = [0 z_freq]; z_freq = z_freq / max(z_freq);
 offset_samples_qso = interp1(z_freq, z_bin, offset_samples_qso);
 
 % load redshifts from catalog to process
-catalog = load(sprintf('%s/catalog', processed_directory(release)));
+catalog = load(sprintf('%s/zqso_only_catalog', processed_directory(release)));
 
 % load preprocessed QSOs
 variables_to_load = {'all_wavelengths', 'all_flux', 'all_noise_variance', ...
     'all_pixel_mask'};
-load(sprintf('%s/preloaded_qsos', processed_directory(release)), ...
+load(sprintf('%s/preloaded_zqso_only_qsos', processed_directory(release)), ...
     variables_to_load{:});
 
 all_wavelengths    =    all_wavelengths(test_ind);
@@ -149,7 +149,7 @@ end
 variables_to_save = {'training_release', 'training_set_name', 'offset_samples_qso', 'sample_log_posteriors',
      'max_z_cut', 'z_map', 'z_qsos', 'signal_to_noise', 'all_thing_ids'};
 
-filename = sprintf('%s/processed_zqsos_%s-%s', ...
+filename = sprintf('%s/processed_zqso_only_qsos_%s-%s', ...
     processed_directory(release), ...
     test_set_name, optTag);
 
