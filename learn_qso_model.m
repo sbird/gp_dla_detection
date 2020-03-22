@@ -8,7 +8,7 @@ catalog = load(sprintf('%s/zqso_only_catalog', processed_directory(training_rele
 % load preprocessed QSOs
 variables_to_load = {'all_wavelengths', 'all_flux', 'all_noise_variance', ...
                      'all_pixel_mask'};
-preqsos = matfile(sprintf('%s/preloaded_zqsos_only_qsos.mat', processed_directory(training_release)));
+preqsos = matfile(sprintf('%s/preloaded_zqso_only_qsos.mat', processed_directory(training_release)));
 
 % determine which spectra to use for training; allow string value for
 % train_ind
