@@ -53,7 +53,7 @@ normalization_min_lambda = lya_wavelength;              % range of rest waveleng
 normalization_max_lambda = lya_wavelength + 250; %   for flux normalization
 
 % null model parameters
-min_lambda         =  910;                 % range of rest wavelengths to       Å
+min_lambda         = lya_wavelength;                 % range of rest wavelengths to       Å
 max_lambda         = 1600;                 %   model
 dlambda            = 0.25;                 % separation of wavelength grid      Å
 k                  = 20;                      % rank of non-diagonal contribution
