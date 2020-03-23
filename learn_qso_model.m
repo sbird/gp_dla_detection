@@ -89,11 +89,9 @@ objective_function = @(x) objective(x, centered_rest_fluxes, rest_noise_variance
 % initialize A to top-k PCA components of non-DLA-containing spectra
 initial_M = bsxfun(@times, coefficients(:, 1:k), sqrt(latent(1:k))');
 
-initial_x = [initial_M(:);];
-
 % maximize likelihood via L-BFGS
 [x, log_likelihood, ~, minFunc_output] = ...
-    minFunc(objective_function, initial_x, minFunc_options);
+    minFunc(objective_function, initial_M, minFunc_options);
 
 ind = (1:(num_rest_pixels * k));
 M = reshape(x(ind), [num_rest_pixels, k]);

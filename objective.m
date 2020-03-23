@@ -2,7 +2,7 @@
 % dataset as a function of the model parameters, x, a vector defined
 % as
 %
-%   x = [vec M; ]
+%   x = vec M;
 %
 % as well as its gradient:
 %
@@ -13,12 +13,9 @@ function [f, g] = objective(x, centered_rest_fluxes, rest_noise_variances)
 
   [num_quasars, num_pixels] = size(centered_rest_fluxes);
 
-  k = (numel(x) - 3) / num_pixels - 1;
+  k = numel(x) / num_pixels;
 
-  ind = (1:(num_pixels * k));
-  M = reshape(x(ind), [num_pixels, k]);
-
-  ind = (num_pixels * k + 1):(num_pixels * (k + 1));
+  M = reshape(x, [num_pixels, k]);
 
   f          = 0;
   dM         = zeros(size(M));
@@ -32,6 +29,6 @@ function [f, g] = objective(x, centered_rest_fluxes, rest_noise_variances)
     dM(ind, :)      = dM(ind, :)      + this_dM;
   end
 
-  g = [dM(:);];
+  g = dM(:,1);
 
 end
