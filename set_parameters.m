@@ -39,13 +39,13 @@ train_ind = ...
 
 % file loading parameters
 loading_min_lambda = 700;                % range of rest wavelengths to load  Å
-loading_max_lambda = 2400;                  % This maximum is set so we include CIV.
+loading_max_lambda = 5000;                  % This maximum is set so we include CIV.
 % The maximum allowed is set so that even if the peak is redshifted off the end, the
 % quasar still has data in the range
 
 % preprocessing parameters
-z_qso_cut      = 2.15;                        % filter out QSOs with z less than this threshold
-z_qso_training_max_cut = 3.5; % roughly 95% of training data occurs before this redshift; assuming for normalization purposes (move to set_parameters when pleased)
+z_qso_cut      = 0;                        % filter out QSOs with z less than this threshold
+z_qso_training_max_cut = 6; % roughly 95% of training data occurs before this redshift; assuming for normalization purposes (move to set_parameters when pleased)
 min_num_pixels = 400;                         % minimum number of non-masked pixels
 
 % normalization parameters
@@ -54,7 +54,7 @@ normalization_max_lambda = lya_wavelength + 250; %   for flux normalization
 
 % null model parameters
 min_lambda         = lya_wavelength;                 % range of rest wavelengths to       Å
-max_lambda         = 1600;                 %   model
+max_lambda         = 3000;                 %   model
 dlambda            = 0.25;                 % separation of wavelength grid      Å
 k                  = 20;                      % rank of non-diagonal contribution
 max_noise_variance = 1^2;                     % maximum pixel noise allowed during model training
