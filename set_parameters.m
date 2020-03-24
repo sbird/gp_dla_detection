@@ -46,18 +46,19 @@ loading_max_lambda = 5000;                  % This maximum is set so we include 
 % preprocessing parameters
 z_qso_cut      = 0;                        % filter out QSOs with z less than this threshold
 z_qso_training_max_cut = 6; % roughly 95% of training data occurs before this redshift; assuming for normalization purposes (move to set_parameters when pleased)
-min_num_pixels = 400;                         % minimum number of non-masked pixels
+z_qso_training_min_cut = 1.; % roughly 95% of training data occurs before this redshift; assuming for normalization purposes (move to set_parameters when pleased)
+min_num_pixels = 1000;                         % minimum number of non-masked pixels
 
 % normalization parameters
 normalization_min_lambda = lya_wavelength;              % range of rest wavelengths to use   Å
-normalization_max_lambda = lya_wavelength + 250; %   for flux normalization
+normalization_max_lambda = lya_wavelength + 500; %   for flux normalization
 
 % null model parameters
 min_lambda         = lya_wavelength;                 % range of rest wavelengths to       Å
 max_lambda         = 3000;                 %   model
 dlambda            = 0.25;                 % separation of wavelength grid      Å
 k                  = 20;                      % rank of non-diagonal contribution
-max_noise_variance = 1^2;                     % maximum pixel noise allowed during model training
+max_noise_variance = 2^2;                     % maximum pixel noise allowed during model training
 
 % optimization parameters
 minFunc_options =               ...           % optimization options for model fitting

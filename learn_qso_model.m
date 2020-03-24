@@ -58,6 +58,12 @@ for i = 1:num_quasars
 end
 clear('all_wavelengths', 'all_flux', 'all_noise_variance', 'all_pixel_mask');
 
+% Filter out spectra with redshifts outside the training region
+ind = (z_qsos > z_qso_training_min_cut) & (z_qsos < z_qso_training_max_cut);
+fprintf("Filtering %g quasars for redshift\n", length(rest_fluxes) - nnz(ind));
+rest_fluxes = rest_fluxes(ind, :);
+rest_noise_variances = rest_noise_variances(ind,:);
+
 % mask noisy pixels
 ind = (rest_noise_variances > max_noise_variance);
 fprintf("Masking %g of pixels\n", nnz(ind)*1./numel(ind));
@@ -66,7 +72,7 @@ rest_noise_variances(ind) = nan;
 
 % Filter out spectra which have too many NaN pixels
 ind = sum(isnan(rest_fluxes),2) < num_rest_pixels-min_num_pixels;
-fprintf("Filtering %g quasars\n", length(rest_fluxes) - nnz(ind));
+fprintf("Filtering %g quasars for NaN\n", length(rest_fluxes) - nnz(ind));
 rest_fluxes = rest_fluxes(ind, :);
 rest_noise_variances = rest_noise_variances(ind,:);
 % Check for columns which contain only NaN on either end.
