@@ -60,13 +60,12 @@ rest_wavelengths         = cell(length(z_list), 1);
 
 for quasar_ind = 1:num_quasars %quasar list
     tic;
-    quasar_num = qso_ind(quasar_ind);
     
     %computing signal-to-noise ratio
-    this_wavelengths    =    all_wavelengths{quasar_num};
-    this_flux           =           all_flux{quasar_num};
-    this_noise_variance = all_noise_variance{quasar_num};
-    this_pixel_mask     =     all_pixel_mask{quasar_num};
+    this_wavelengths    =    all_wavelengths{quasar_ind};
+    this_flux           =           all_flux{quasar_ind};
+    this_noise_variance = all_noise_variance{quasar_ind};
+    this_pixel_mask     =     all_pixel_mask{quasar_ind};
     
     this_rest_wavelengths = emitted_wavelengths(this_wavelengths, 4.4088); %roughly highest redshift possible (S2N for everything that may be in restframe)
     ind  = this_rest_wavelengths <= max_lambda;
@@ -75,7 +74,7 @@ for quasar_ind = 1:num_quasars %quasar list
     this_noise_variance   =   this_noise_variance(ind);
     this_noise_variance(isinf(this_noise_variance)) = .01; %kludge to fix bad data
     this_pixel_signal_to_noise = sqrt(this_noise_variance) ./ abs(this_flux);
-    signal_to_noise(quasar_num) = mean(this_pixel_signal_to_noise);
+    signal_to_noise(quasar_ind) = mean(this_pixel_signal_to_noise);
     %
     
     for z_list_ind = 1:length(offset_samples_qso) %variant redshift in quasars
@@ -84,13 +83,13 @@ for quasar_ind = 1:num_quasars %quasar list
         
         if mod(i, 500) == 0
             fprintf('processing quasar %i of %i, true num %i, iteration %i (z_QSO = %0.4f) ...\n', ...
-                quasar_ind, length(qso_ind), quasar_num, z_list_ind, z_qso);
+                quasar_ind, num_quasars, quasar_ind, z_list_ind, z_qso);
         end
         
-        this_wavelengths    =    all_wavelengths{quasar_num};
-        this_flux           =           all_flux{quasar_num};
-        this_noise_variance = all_noise_variance{quasar_num};
-        this_pixel_mask     =     all_pixel_mask{quasar_num};
+        this_wavelengths    =    all_wavelengths{quasar_ind};
+        this_flux           =           all_flux{quasar_ind};
+        this_noise_variance = all_noise_variance{quasar_ind};
+        this_pixel_mask     =     all_pixel_mask{quasar_ind};
         
         %interpolate observations
         rframe_len = 1000;
