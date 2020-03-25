@@ -11,6 +11,9 @@ load(sprintf('%s/learned_qso_model_%s',             ...
 rng('default');
 sequence = scramble(haltonset(1), 'rr2');
 
+% load redshifts from catalog to process
+catalog = load(sprintf('%s/zqso_only_catalog', processed_directory(release)));
+
 % Generate samples with different quasar redshifts
 offset_samples_qso  = sequence(1:num_zqso_samples);
 z_qsos = catalog.z_qsos;
@@ -21,15 +24,12 @@ z_freq = [0 z_freq]; z_freq = z_freq / max(z_freq);
 [z_freq, I] = unique(z_freq); z_bin = z_bin(I);
 offset_samples_qso = interp1(z_freq, z_bin, offset_samples_qso);
 
-% load redshifts from catalog to process
-catalog = load(sprintf('%s/zqso_only_catalog', processed_directory(release)));
-
 % load preprocessed QSOs
 variables_to_load = {'all_wavelengths', 'all_flux', 'all_noise_variance', ...
     'all_pixel_mask'};
 load(sprintf('%s/preloaded_zqso_only_qsos', processed_directory(release)), ...
     variables_to_load{:});
-
+test_ind = (catalog.filter_flags == 0);
 all_wavelengths    =    all_wavelengths(test_ind);
 all_flux           =           all_flux(test_ind);
 all_noise_variance = all_noise_variance(test_ind);

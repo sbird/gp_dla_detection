@@ -33,12 +33,12 @@ file_loader = @(plate, mjd, fiber_id) ...
     fiber_id)));
 
 training_release  = 'dr12q';
+training_set_name = 'dr9q_minus_concordance';
 train_ind = ...
     [' catalog.in_dr9                     & ' ...
      '(catalog.filter_flags == 0) ' ];
 
 test_set_name = 'dr12q';
-test_ind = '(catalog.filter_flags == 0)';
 
 % file loading parameters
 loading_min_lambda = lya_wavelength;                % range of rest wavelengths to load  Å
