@@ -108,6 +108,9 @@ for quasar_ind = 1:num_quasars %quasar list
         
         sample_log_posteriors(quasar_ind, z_list_ind) = ...
             log_mvnpdf_low_rank(this_rest_flux, this_mu, this_M, this_rest_noise_variance) + sample_log_priors;
+        % Correct for incomplete data
+        corr = nnz(ind) / ((max_lambda - min_lambda) /dlambda);
+        sample_log_posteriors(quasar_ind, z_list_ind) = sample_log_posteriors(quasar_ind, z_list_ind) - corr;
 
         fprintf_debug(' ... log p(D | z_QSO)     : %0.2f\n', ...
             sample_log_posteriors(quasar_ind, z_list_ind));
