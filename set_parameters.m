@@ -37,16 +37,19 @@ train_ind = ...
     [' catalog.in_dr9                     & ' ...
      '(catalog.filter_flags == 0) ' ];
 
+test_set_name = 'dr12q';
+test_ind = '(catalog.filter_flags == 0)';
+
 % file loading parameters
-loading_min_lambda = 700;                % range of rest wavelengths to load  Å
+loading_min_lambda = lya_wavelength;                % range of rest wavelengths to load  Å
 loading_max_lambda = 5000;                  % This maximum is set so we include CIV.
 % The maximum allowed is set so that even if the peak is redshifted off the end, the
 % quasar still has data in the range
 
 % preprocessing parameters
-z_qso_cut      = 0;                        % filter out QSOs with z less than this threshold
-z_qso_training_max_cut = 6; % roughly 95% of training data occurs before this redshift; assuming for normalization purposes (move to set_parameters when pleased)
-z_qso_training_min_cut = 1.; % roughly 95% of training data occurs before this redshift; assuming for normalization purposes (move to set_parameters when pleased)
+z_qso_cut      = 0;         % filter out QSOs with z less than this threshold
+z_qso_training_max_cut = 5; % roughly 95% of training data occurs before this redshift; assuming for normalization purposes (move to set_parameters when pleased)
+z_qso_training_min_cut = 1.5; % Ignore these quasars when training
 min_num_pixels = 1000;                         % minimum number of non-masked pixels
 
 % normalization parameters
