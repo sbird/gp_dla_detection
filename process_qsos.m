@@ -119,7 +119,7 @@ for quasar_ind = 1:num_quasars %quasar list
         fprintf_debug(' ... log p(D | z_QSO)     : %0.2f\n', ...
             sample_log_posteriors(quasar_ind, z_list_ind));
     end
-    this_sample_log = sample_log_posteriors(quasar_ind, :)
+    this_sample_log = sample_log_posteriors(quasar_ind, :);
     max_log_likelihood = max(this_sample_log);
     
     [~, I] = max(exp(this_sample_log - max_log_likelihood));
