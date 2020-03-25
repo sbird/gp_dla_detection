@@ -123,18 +123,23 @@ for quasar_ind = 1:num_quasars %quasar list
             sample_log_posteriors(quasar_ind, z_list_ind));
     end
     this_sample_log = sample_log_posteriors(quasar_ind, :);
-    max_log_likelihood = max(this_sample_log);
     
-    [~, I] = max(exp(this_sample_log - max_log_likelihood));
+    [~, I] = max(this_sample_log);
     
     z_map(quasar_ind) = offset_samples_qso(I);                                  %MAP estimate
     
+    zdiff = z_map(quasar_ind) - z_qsos(quasar_ind);
+    if mod(quasar_ind, 1) == 0
+        fprintf('Done QSO %i of %i. True z_QSO = %0.4f, I=%d map=%0.4f dif = %.04f\n', ...
+            quasar_ind, num_quasars, z_qsos(quasar_ind), I, z_map(quasar_ind), zdiff);
+    end
+
     fprintf(' took %0.3fs.\n', toc);
 end
 
 % save results
-variables_to_save = {'training_release', 'training_set_name', 'offset_samples_qso', 'sample_log_posteriors',
-     'max_z_cut', 'z_map', 'z_qsos', 'all_thing_ids'};
+variables_to_save = {'training_release', 'training_set_name', 'offset_samples_qso', 'sample_log_posteriors', ...
+     'z_map', 'z_qsos', 'all_thing_ids'};
 
 filename = sprintf('%s/processed_zqso_only_qsos_%s-%s', ...
     processed_directory(release), ...
