@@ -12,7 +12,7 @@ rng('default');
 sequence = scramble(haltonset(1), 'rr2');
 
 % Generate samples with different quasar redshifts
-offset_samples_qso  = sequence(1:num_zqso_samples, 2)';
+offset_samples_qso  = sequence(1:num_zqso_samples);
 z_qsos = catalog.z_qsos;
 bins = 150;
 [z_freq, z_bin] = histcounts(z_qsos, [z_qso_cut : ((max(z_qsos) - z_qso_cut) / bins) : max(z_qsos)]);
