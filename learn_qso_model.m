@@ -88,12 +88,11 @@ clear('rest_fluxes');
 [coefficients, ~, latent] = ...
     pca(centered_rest_fluxes, ...
         'numcomponents', k, ...
-        'rows',          'complete');
-
-objective_function = @(x) objective(x, centered_rest_fluxes, rest_noise_variances);
-
+        'rows',          'pairwise');
 % initialize A to top-k PCA components of non-DLA-containing spectra
 initial_M = bsxfun(@times, coefficients(:, 1:k), sqrt(latent(1:k))');
+
+objective_function = @(x) objective(x, centered_rest_fluxes, rest_noise_variances);
 
 % maximize likelihood via L-BFGS
 [x, log_likelihood, ~, minFunc_output] = ...
