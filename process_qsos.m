@@ -72,37 +72,27 @@ for quasar_ind = 1:num_quasars %quasar list
     for z_list_ind = 1:length(offset_samples_qso) %variant redshift in quasars
         z_qso = offset_samples_qso(z_list_ind);
         
-        if mod(z_list_ind, 500) == 0
-            fprintf('processing quasar %i of %i, iteration %i (z_QSO = %0.4f) ...\n', ...
-                quasar_ind, num_quasars, z_list_ind, z_qso);
-        end
-        
         %interpolate observations
         max_observed_lambda = observed_wavelengths(max_lambda, z_qso);
         max_observed_lambda = min(max_observed_lambda, max(this_wavelengths));
         min_observed_lambda = observed_wavelengths(min_lambda, z_qso);
         min_observed_lambda = max(min_observed_lambda, min(this_wavelengths));
-        if min_observed_lambda > max_observed_lambda
-            % If we have no data in the observed range, this sample is maximally unlikely.
-            sample_log_posteriors(quasar_ind, z_list_ind) = -1.e99;
-            continue;
-        end
-        rframe_len = 1000;
-        vq_range = min_observed_lambda:(max_observed_lambda - min_observed_lambda)/rframe_len:max_observed_lambda;
-        vq_range = vq_range';
-        this_rest_flux = interp1(this_wavelengths, this_flux, vq_range);
-        this_rest_noise_variance = interp1(this_wavelengths, this_noise_variance, vq_range);
         % convert to QSO rest frame
-        this_rest_wavelengths = emitted_wavelengths(vq_range, z_qso);
+        this_rest_wavelengths = emitted_wavelengths(this_wavelengths, z_qso);
         
         ind = (this_rest_wavelengths >= min_lambda) & ...
             (this_rest_wavelengths <= max_lambda);
         
+        if (min_observed_lambda > max_observed_lambda) | nnz(ind) < 2
+            % If we have no data in the observed range, this sample is maximally unlikely.
+            sample_log_posteriors(quasar_ind, z_list_ind) = -1.e50;
+            continue;
+        end
         %ind = ind & (~this_pixel_mask);
         
         this_rest_wavelengths = this_rest_wavelengths(ind);
-        this_rest_flux             =             this_rest_flux(ind);
-        this_rest_noise_variance   =   this_rest_noise_variance(ind);
+        this_rest_flux             =             this_flux(ind);
+        this_rest_noise_variance   =   this_noise_variance(ind);
         
         fluxes{z_list_ind} = this_rest_flux;
         rest_wavelengths{z_list_ind} = this_rest_wavelengths;
