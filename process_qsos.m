@@ -61,62 +61,47 @@ rest_wavelengths         = cell(length(z_list), 1);
 for quasar_ind = 1:num_quasars %quasar list
     tic;
     
-    %computing signal-to-noise ratio
     this_wavelengths    =    all_wavelengths{quasar_ind};
     this_flux           =           all_flux{quasar_ind};
     this_noise_variance = all_noise_variance{quasar_ind};
     this_pixel_mask     =     all_pixel_mask{quasar_ind};
-    
-    this_rest_wavelengths = emitted_wavelengths(this_wavelengths, 4.4088); %roughly highest redshift possible (S2N for everything that may be in restframe)
-    ind  = this_rest_wavelengths <= max_lambda;
-    this_rest_wavelengths = this_rest_wavelengths(ind);
-    this_flux             =             this_flux(ind);
-    this_noise_variance   =   this_noise_variance(ind);
-    this_noise_variance(isinf(this_noise_variance)) = .01; %kludge to fix bad data
-    this_pixel_signal_to_noise = sqrt(this_noise_variance) ./ abs(this_flux);
-    signal_to_noise(quasar_ind) = mean(this_pixel_signal_to_noise);
-    %
-    
+        
     for z_list_ind = 1:length(offset_samples_qso) %variant redshift in quasars
         z_qso = offset_samples_qso(z_list_ind);
-        i = z_list_ind;
         
-        if mod(i, 500) == 0
-            fprintf('processing quasar %i of %i, true num %i, iteration %i (z_QSO = %0.4f) ...\n', ...
-                quasar_ind, num_quasars, quasar_ind, z_list_ind, z_qso);
+        if mod(z_list_ind, 500) == 0
+            fprintf('processing quasar %i of %i, iteration %i (z_QSO = %0.4f) ...\n', ...
+                quasar_ind, num_quasars, z_list_ind, z_qso);
         end
         
-        this_wavelengths    =    all_wavelengths{quasar_ind};
-        this_flux           =           all_flux{quasar_ind};
-        this_noise_variance = all_noise_variance{quasar_ind};
-        this_pixel_mask     =     all_pixel_mask{quasar_ind};
-        
         %interpolate observations
-        rframe_len = 1000;
         max_observed_lambda = observed_wavelengths(max_lambda, z_qso);
         max_observed_lambda = min(max_observed_lambda, max(this_wavelengths));
         min_observed_lambda = observed_wavelengths(min_lambda, z_qso);
         min_observed_lambda = max(min_observed_lambda, min(this_wavelengths));
-        vq_range = min_observed_lambda:(max_observed_lambda - ...
-            min_observed_lambda)/rframe_len:max_observed_lambda;
+        if min_observed_lambda > max_observed_lambda
+            % If we have no data in the observed range, this sample is maximally unlikely.
+            sample_log_posteriors(quasar_ind, z_list_ind) = -1.e99;
+            continue;
+        end
+        rframe_len = 1000;
+        vq_range = min_observed_lambda:(max_observed_lambda - min_observed_lambda)/rframe_len:max_observed_lambda;
         vq_range = vq_range';
-        this_flux = interp1(this_wavelengths, this_flux, vq_range);
-        this_noise_variance = interp1(this_wavelengths, this_noise_variance, vq_range);
-        this_wavelengths = vq_range;
+        this_rest_flux = interp1(this_wavelengths, this_flux, vq_range);
+        this_rest_noise_variance = interp1(this_wavelengths, this_noise_variance, vq_range);
         % convert to QSO rest frame
-        this_rest_wavelengths = emitted_wavelengths(this_wavelengths, z_qso);
+        this_rest_wavelengths = emitted_wavelengths(vq_range, z_qso);
         
         ind = (this_rest_wavelengths >= min_lambda) & ...
             (this_rest_wavelengths <= max_lambda);
         
         %ind = ind & (~this_pixel_mask);
         
-        this_wavelengths      =      this_wavelengths(ind);
         this_rest_wavelengths = this_rest_wavelengths(ind);
-        this_flux             =             this_flux(ind);
-        this_noise_variance   =   this_noise_variance(ind);
+        this_rest_flux             =             this_rest_flux(ind);
+        this_rest_noise_variance   =   this_rest_noise_variance(ind);
         
-        fluxes{z_list_ind} = this_flux;
+        fluxes{z_list_ind} = this_rest_flux;
         rest_wavelengths{z_list_ind} = this_rest_wavelengths;
         
         % interpolate model onto given wavelengths
@@ -126,10 +111,10 @@ for quasar_ind = 1:num_quasars %quasar list
         %all_mus{z_list_ind} = this_mu;
         %all_Ms{z_list_ind} = this_M;
        
-        sample_log_priors = 0
+        sample_log_priors = 0;
         
         sample_log_posteriors(quasar_ind, z_list_ind) = ...
-            log_mvnpdf_low_rank(this_flux, this_mu, this_M, this_noise_variance) + sample_log_priors;
+            log_mvnpdf_low_rank(this_rest_flux, this_mu, this_M, this_rest_noise_variance) + sample_log_priors;
 
         fprintf_debug(' ... log p(D | z_QSO)     : %0.2f\n', ...
             sample_log_posteriors(quasar_ind, z_list_ind));
@@ -146,7 +131,7 @@ end
 
 % save results
 variables_to_save = {'training_release', 'training_set_name', 'offset_samples_qso', 'sample_log_posteriors',
-     'max_z_cut', 'z_map', 'z_qsos', 'signal_to_noise', 'all_thing_ids'};
+     'max_z_cut', 'z_map', 'z_qsos', 'all_thing_ids'};
 
 filename = sprintf('%s/processed_zqso_only_qsos_%s-%s', ...
     processed_directory(release), ...
