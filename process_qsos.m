@@ -109,7 +109,7 @@ for quasar_ind = 1:num_quasars %quasar list
         sample_log_posteriors(quasar_ind, z_list_ind) = ...
             log_mvnpdf_low_rank(this_rest_flux, this_mu, this_M, this_rest_noise_variance) + sample_log_priors;
         % Correct for incomplete data
-        corr = nnz(ind) - size(this_wavelengths);
+        corr = nnz(ind) - length(this_rest_wavelengths);
         sample_log_posteriors(quasar_ind, z_list_ind) = sample_log_posteriors(quasar_ind, z_list_ind) + corr;
 
         fprintf_debug(' ... log p(D | z_QSO)     : %0.2f\n', ...
@@ -123,8 +123,9 @@ for quasar_ind = 1:num_quasars %quasar list
     
     zdiff = z_map(quasar_ind) - z_qsos(quasar_ind);
     if mod(quasar_ind, 1) == 0
-        fprintf('Done QSO %i of %i in %.3 f s. True z_QSO = %0.4f, I=%d map=%0.4f dif = %.04f\n', ...
-            quasar_ind, num_quasars, toc, z_qsos(quasar_ind), I, z_map(quasar_ind), zdiff);
+        t = toc;
+        fprintf('Done QSO %i of %i in %0.3f s. True z_QSO = %0.4f, I=%d map=%0.4f dif = %.04f\n', ...
+            quasar_ind, num_quasars, t, z_qsos(quasar_ind), I, z_map(quasar_ind), zdiff);
     end
 end
 
