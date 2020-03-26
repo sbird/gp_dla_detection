@@ -69,7 +69,7 @@ for quasar_ind = 1:num_quasars %quasar list
     this_noise_variance = all_noise_variance{quasar_ind};
     this_pixel_mask     =     all_pixel_mask{quasar_ind};
         
-    for z_list_ind = 1:length(offset_samples_qso) %variant redshift in quasars
+    parfor z_list_ind = 1:length(offset_samples_qso) %variant redshift in quasars
         z_qso = offset_samples_qso(z_list_ind);
         
         %interpolate observations
@@ -123,11 +123,9 @@ for quasar_ind = 1:num_quasars %quasar list
     
     zdiff = z_map(quasar_ind) - z_qsos(quasar_ind);
     if mod(quasar_ind, 1) == 0
-        fprintf('Done QSO %i of %i. True z_QSO = %0.4f, I=%d map=%0.4f dif = %.04f\n', ...
-            quasar_ind, num_quasars, z_qsos(quasar_ind), I, z_map(quasar_ind), zdiff);
+        fprintf('Done QSO %i of %i in %.3 f s. True z_QSO = %0.4f, I=%d map=%0.4f dif = %.04f\n', ...
+            quasar_ind, num_quasars, toc, z_qsos(quasar_ind), I, z_map(quasar_ind), zdiff);
     end
-
-    fprintf(' took %0.3fs.\n', toc);
 end
 
 % save results
