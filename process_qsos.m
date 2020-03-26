@@ -83,7 +83,7 @@ for quasar_ind = 1:num_quasars %quasar list
         ind = (this_rest_wavelengths >= min_lambda) & ...
             (this_rest_wavelengths <= max_lambda);
         
-        if (min_observed_lambda > max_observed_lambda) | nnz(ind) < 2
+        if (min_observed_lambda > max_observed_lambda) | (nnz(ind) < 150)
             % If we have no data in the observed range, this sample is maximally unlikely.
             sample_log_posteriors(quasar_ind, z_list_ind) = -1.e50;
             continue;
@@ -109,8 +109,8 @@ for quasar_ind = 1:num_quasars %quasar list
         sample_log_posteriors(quasar_ind, z_list_ind) = ...
             log_mvnpdf_low_rank(this_rest_flux, this_mu, this_M, this_rest_noise_variance) + sample_log_priors;
         % Correct for incomplete data
-        corr = nnz(ind) / ((max_lambda - min_lambda) /dlambda);
-        sample_log_posteriors(quasar_ind, z_list_ind) = sample_log_posteriors(quasar_ind, z_list_ind) - corr;
+        corr = nnz(ind) - size(this_wavelengths);
+        sample_log_posteriors(quasar_ind, z_list_ind) = sample_log_posteriors(quasar_ind, z_list_ind) + corr;
 
         fprintf_debug(' ... log p(D | z_QSO)     : %0.2f\n', ...
             sample_log_posteriors(quasar_ind, z_list_ind));
