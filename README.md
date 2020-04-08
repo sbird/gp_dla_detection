@@ -168,8 +168,8 @@ desired:
     initial_tau_0 = 0.0023;                       % initial guess for τ₀
     initial_beta  = 3.65;                         % initial guess for β
     minFunc_options =               ...           % optimization options for model fitting
-        struct('MaxIter',     2000, ...
-               'MaxFunEvals', 4000);
+        struct('MaxIter',     4000, ...
+               'MaxFunEvals', 8000);
 
 When ready, the MATLAB code to learn the null quasar emission model
 is:
