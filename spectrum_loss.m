@@ -12,7 +12,8 @@
 % and its derivatives wrt M, log ω, log c₉, log τ₀, and log β
 
 function [nlog_p, dM, dlog_omega, dlog_c_0, dlog_tau_0, dlog_beta] = ...
-      spectrum_loss(y, lya_1pz, noise_variance, M, omega2, c_0, tau_0, beta)
+      spectrum_loss(y, lya_1pz, noise_variance, M, omega2, c_0, tau_0, beta, ...
+      num_forest_lines, all_transition_wavelengths, all_oscillator_strengths, zqso_1pz)
 
   log_2pi = 1.83787706640934534;
 
@@ -20,6 +21,22 @@ function [nlog_p, dM, dlog_omega, dlog_c_0, dlog_tau_0, dlog_beta] = ...
 
   % compute approximate Lyα optical depth/absorption
   lya_optical_depth = tau_0 .* lya_1pz.^beta;
+
+  % compute approximate Lyman series optical depth/absorption
+  % using the scaling relationship
+
+  for i = 2:num_forest_lines
+    lyman_1pz = all_transition_wavelengths(1) .* lya_1pz ...
+        ./ all_transition_wavelengths(i);
+    
+    indicator = lyman_1pz <= zqso_1pz;
+    lyman_1pz = lyman_1pz .* indicator;
+    
+    tau = tau_0 * all_transition_wavelengths(i) * all_oscillator_strengths(i) ...
+      / ( all_transition_wavelengths(1) * all_oscillator_strengths(1) );
+
+    lya_optical_depth = lya_optical_depth + tau .* lyman_1pz.^beta;
+  end
   lya_absorption = exp(-lya_optical_depth);
 
   % compute "absorption noise" contribution
