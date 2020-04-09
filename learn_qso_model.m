@@ -38,6 +38,11 @@ all_lyman_1pzs       = nan(num_forest_lines, num_quasars, num_rest_pixels);
 rest_fluxes          = nan(num_quasars, num_rest_pixels);
 rest_noise_variances = nan(num_quasars, num_rest_pixels);
 
+% the preload_qsos should fliter out empty spectra;
+% this line is to prevent there is any empty spectra
+% in preloaded_qsos.mat for some reason
+is_empty             = false(num_quasars, 1);
+
 % interpolate quasars onto chosen rest wavelength grid
 for i = 1:num_quasars
   z_qso = z_qsos(i);
@@ -55,6 +60,7 @@ for i = 1:num_quasars
   fprintf('processing quasar %i with lambda_size = %i %i ...\n', i, size(this_wavelengths))
   
   if all(size(this_wavelengths) == [0 0])
+    is_empty(i, 1) = 1;
     continue;
   end
 
@@ -94,6 +100,19 @@ for i = 1:num_quasars
       interp1(this_rest_wavelengths, this_noise_variance, rest_wavelengths);
 end
 clear('all_wavelengths', 'all_flux', 'all_noise_variance', 'all_pixel_mask');
+
+% filter out empty spectra
+% note: if you've done this in preload_qsos then skip these lines
+z_qsos               = z_qsos(~is_empty);
+lya_1pzs             = lya_1pzs(~is_empty, :);
+rest_fluxes          = rest_fluxes(~is_empty, :);
+rest_noise_variances = rest_noise_variances(~is_empty, :);
+all_lyman_1pzs       = all_lyman_1pzs(:, ~is_empty, :);
+
+% update num_quasars in consideration
+num_quasars = numel(z_qsos);
+
+fprintf('Get rid of empty spectra, num_quasars = %i\n', num_quasars);
 
 % mask noisy pixels
 ind = (rest_noise_variances > max_noise_variance);
