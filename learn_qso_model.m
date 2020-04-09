@@ -52,6 +52,12 @@ for i = 1:num_quasars
   this_flux(this_pixel_mask)           = nan;
   this_noise_variance(this_pixel_mask) = nan;
 
+  fprintf('processing quasar %i with lambda_size = %i %i ...\n', i, size(this_wavelengths))
+  
+  if all(size(this_wavelengths) == [0 0])
+    continue;
+  end
+
   lya_1pzs(i, :) = ...
       interp1(this_rest_wavelengths, ...
               1 + (this_wavelengths - lya_wavelength) / lya_wavelength, ...
