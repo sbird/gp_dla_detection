@@ -85,12 +85,10 @@ for i = 1:num_quasars
               1 + (this_wavelengths - this_transition_wavelength) / this_transition_wavelength, ... 
               rest_wavelengths);
 
-    if j > 1
-      % indicator function: z absorbers <= z_qso
-      indicator = all_lyman_1pzs(j, i, :) <= (1 + z_qso);
+    % indicator function: z absorbers <= z_qso
+    indicator = all_lyman_1pzs(j, i, :) <= (1 + z_qso);
 
-      all_lyman_1pzs(j, i, :) = all_lyman_1pzs(j, i, :) .* indicator;    
-    end
+    all_lyman_1pzs(j, i, :) = all_lyman_1pzs(j, i, :) .* indicator;
   end
 
   rest_fluxes(i, :) = ...
@@ -135,7 +133,8 @@ rest_noise_variances_exp1pz = nan(num_quasars, num_rest_pixels);
 
 for i = 1:num_quasars
   % compute the total optical depth from all Lyman series members
-  total_optical_depth = nan(num_forest_lines, num_rest_pixels);
+  % Apr 8: not using NaN here anymore due to range beyond Lya will all be NaNs
+  total_optical_depth = zeros(num_forest_lines, num_rest_pixels);
 
   for j = 1:num_forest_lines
     % calculate the oscillator strengths for Lyman series
@@ -149,7 +148,9 @@ for i = 1:num_quasars
     total_optical_depth(j, :) = this_tau_0 .* (this_lyman_1pzs.^prev_beta);
   end
 
-  lya_absorption = exp(- nansum(total_optical_depth, 1) );
+  % Apr 8: using zeros instead so not nansum here anymore
+  % beyond lya, absorption fcn shoud be unity
+  lya_absorption = exp(- sum(total_optical_depth, 1) );
 
   % We have to reverse the effect of Lyα for both mean-flux and observational noise
   rest_fluxes_div_exp1pz(i, :)      = rest_fluxes(i, :) ./ lya_absorption;
