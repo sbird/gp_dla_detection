@@ -1,4 +1,14 @@
 % process_qsos: run DLA detection algorithm on specified objects
+% 
+% Apr 8, 2020: add all Lyman series to the effective optical depth
+%   effective_optical_depth := ∑ τ fi1 λi1 / ( f21 λ21 ) * ( 1 + z_i1 )^β
+%  where 
+%   1 + z_i1 =  λobs / λ_i1 = λ_lya / λ_i1 *  (1 + z_a)
+% Dec 25, 2019: add Lyman series to the noise variance training
+%   s(z)     = 1 - exp(-effective_optical_depth) + c_0 
+% the mean values of Kim's effective optical depth
+prev_tau_0 = 0.0023;
+prev_beta  = 3.65;
 
 % load redshifts/DLA flags from training release
 prior_catalog = ...
@@ -191,6 +201,16 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
             (this_wavelengths - lya_wavelength) / ...
             lya_wavelength;
         
+        % To count the effect of Lyman series from higher z,
+        % we compute the absorbers' redshifts for all members of the series
+        this_lyseries_zs = nan(numel(this_wavelengths), num_forest_lines);
+
+        for l = 1:num_forest_lines
+            this_lyseries_zs(:, l) = ...
+              (this_wavelengths - all_transition_wavelengths(l)) / ...
+              all_transition_wavelengths(l);
+        end
+
         % DLA existence prior
         less_ind = (prior.z_qsos < (z_qso + prior_z_qso_increase));
         
@@ -227,13 +247,71 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         this_log_omega = log_omega_interpolator(this_rest_wavelengths);
         this_omega2 = exp(2 * this_log_omega);
         
-        this_scaling_factor = 1 - exp(-tau_0 .* (1 + this_lya_zs).^beta) + c_0;
+        % Lyman series absorption effect for the noise variance
+        % note: this noise variance must be trained on the same number of members of Lyman series
+        lya_optical_depth = tau_0 .* (1 + this_lya_zs).^beta;
+
+        % Note: this_wavelengths is within (min_lambda, max_lambda)
+        % so it may beyond lya_wavelength, so need an indicator;
+        % Note: 1 - exp( -0 ) + c_0 = c_0
+        indicator         = this_lya_zs <= z_qso;
+        lya_optical_depth = lya_optical_depth .* indicator;
+
+        for l = 2:num_forest_lines
+            lyman_1pz = all_transition_wavelengths(1) .* (1 + this_lya_zs) ...
+                ./ all_transition_wavelengths(l);
+
+            % only include the Lyman series with absorber redshifts lower than z_qso
+            indicator = lyman_1pz <= (1 + z_qso);
+            lyman_1pz = lyman_1pz .* indicator;
+
+            tau = tau_0 * all_transition_wavelengths(l) * all_oscillator_strengths(l) ...
+                / (  all_transition_wavelengths(1) * all_oscillator_strengths(1) );
+
+            lya_optical_depth = lya_optical_depth + tau .* lyman_1pz.^beta;
+        end
+
+        this_scaling_factor = 1 - exp( -lya_optical_depth ) + c_0;
         
         this_omega2 = this_omega2 .* this_scaling_factor.^2;
         
         %no noise after ly_alpha peak @ 1215.67 in rest frame
         ind_w = find(this_rest_wavelengths > lya_wavelength);
         this_omega2(ind_w) = .001;
+
+        % Lyman series absorption effect on the mean-flux
+        % apply the lya_absorption after the interpolation because NaN will appear in this_mu
+        total_optical_depth = nan(numel(this_wavelengths), num_forest_lines);
+
+        for l = 1:num_forest_lines
+            % calculate the oscillator strength for this lyman series member
+            this_tau_0 = prev_tau_0 * ...
+              all_oscillator_strengths(l)   / lya_oscillator_strength * ...
+              all_transition_wavelengths(l) / lya_wavelength;
+
+            total_optical_depth(:, l) = ...
+              this_tau_0 .* ( (1 + this_lyseries_zs(:, l)).^prev_beta );
+
+            % indicator function: z absorbers <= z_qso
+            % here is different from multi-dla processing script
+            % I choose to use zero instead or nan to indicate
+            % values outside of the Lyman forest
+            indicator = this_lyseries_zs(:, l) <= z_qso;
+            total_optical_depth(:, l) = total_optical_depth(:, l) .* indicator;
+        end
+
+        % change from nansum to simply sum; shoudn't be different
+        % because we also change indicator from nan to zero,
+        % but if this script is glitchy then inspect this line
+        lya_absorption = exp(- sum(total_optical_depth, 2) );
+
+        this_mu = this_mu .* lya_absorption;
+        this_M  = this_M  .* lya_absorption;
+
+        % re-adjust (K + Ω) to the level of μ .* exp( -optical_depth ) = μ .* a_lya
+        % now the null model likelihood is:
+        % p(y | λ, zqso, v, ω, M_nodla) = N(y; μ .* a_lya, A_lya (K + Ω) A_lya + V)
+        this_omega2 = this_omega2 .* lya_absorption.^2;
         
         % baseline: probability of no DLA model
         sample_log_likelihoods_no_dla(quasar_ind, z_list_ind) = ...
