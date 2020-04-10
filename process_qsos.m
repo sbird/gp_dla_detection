@@ -309,10 +309,6 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         
         this_omega2 = this_omega2 .* this_scaling_factor.^2;
 
-        %no noise after ly_alpha peak @ 1215.67 in rest frame
-        ind_w = find(this_rest_wavelengths > lya_wavelength);
-        this_omega2(ind_w) = .001;
-
         % Lyman series absorption effect on the mean-flux
         % apply the lya_absorption after the interpolation because NaN will appear in this_mu
         total_optical_depth = nan(numel(this_wavelengths), num_forest_lines);
