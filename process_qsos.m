@@ -416,11 +416,15 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
 
     % use nanmax to avoid NaN potentially in the samples
     % not sure whether the z code has many NaNs in array; the multi-dla codes have many NaNs
-    max_log_likelihood_no_dla = nanmax(sample_log_posteriors_no_dla);
-    max_log_likelihood_dla    = nanmax(sample_log_posteriors_dla);
+    max_log_likelihood_no_dla = nanmax(sample_log_posteriors_no_dla(quasar_ind, :));
+    max_log_likelihood_dla    = nanmax(sample_log_posteriors_dla(quasar_ind, :));
 
-    probabilities_no_dla = exp(sample_log_posteriors_no_dla(quasar_ind, :) - max_log_likelihood_no_dla);
-    probabilities_dla    = exp(sample_log_posteriors_dla(quasar_ind, :) - max_log_likelihood_dla);
+    probabilities_no_dla = ...
+        exp(sample_log_posteriors_no_dla(quasar_ind, :) - ...
+            max_log_likelihood_no_dla);
+    probabilities_dla    = ... 
+        exp(sample_log_posteriors_dla(quasar_ind, :) - ...
+            max_log_likelihood_dla);
 
     [~, I] = nanmax(probabilities_no_dla + probabilities_dla);
     z_map(quasar_ind) = offset_samples_qso(I);                                  %MAP estimate
