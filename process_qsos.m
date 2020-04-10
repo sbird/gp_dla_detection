@@ -167,8 +167,15 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         this_wavelengths = vq_range;
         % convert to QSO rest frame
         this_rest_wavelengths = emitted_wavelengths(this_wavelengths, z_qso);
-        
-        
+
+        %normalizing here
+        ind = (this_rest_wavelengths >= normalization_min_lambda) & ...
+            (this_rest_wavelengths <= normalization_max_lambda);
+
+        this_median = nanmedian(this_flux(ind));
+        this_flux = this_flux / this_median;
+        this_noise_variance = this_noise_variance / this_median .^ 2;
+
         ind = (this_rest_wavelengths >= min_lambda) & ...
             (this_rest_wavelengths <= max_lambda);
         
