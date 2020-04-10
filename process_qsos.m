@@ -408,6 +408,7 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         %     this_sample_log_priors_dla(1, i) + this_sample_log_likelihoods_dla(1, i);
     end
 
+    % indicing sample_log_posteriors instead of assignments to avoid create a new array
     sample_log_posteriors_no_dla(quasar_ind, :) = ...
         this_sample_log_priors_no_dla(1, :) + this_sample_log_likelihoods_no_dla(1, :);
     sample_log_posteriors_dla(quasar_ind, :)    = ...
@@ -418,8 +419,8 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     max_log_likelihood_no_dla = nanmax(sample_log_posteriors_no_dla);
     max_log_likelihood_dla    = nanmax(sample_log_posteriors_dla);
 
-    probabilities_no_dla = exp(sample_log_posteriors_no_dla - max_log_likelihood_no_dla);
-    probabilities_dla    = exp(sample_log_posteriors_dla - max_log_likelihood_dla);
+    probabilities_no_dla = exp(sample_log_posteriors_no_dla(quasar_ind, :) - max_log_likelihood_no_dla);
+    probabilities_dla    = exp(sample_log_posteriors_dla(quasar_ind, :) - max_log_likelihood_dla);
 
     [~, I] = nanmax(probabilities_no_dla + probabilities_dla);
     z_map(quasar_ind) = offset_samples_qso(I);                                  %MAP estimate
