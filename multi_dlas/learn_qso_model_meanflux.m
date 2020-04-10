@@ -1,4 +1,9 @@
-% learn_qso_model: fits GP to training catalog via maximum likelihood
+% learn_qso_model_meanflux: fits GP to training catalog via maximum likelihood
+%   mean vector is modelled to change with the mean-flux with the implemetation of Lyman-series forest 
+%   using Kim's mean values. Also, noise variance is modelled to include Lyman series.
+%
+%   lift     mean-flux mu in the learning script via median(   y .* exp( + optical_depth ) ),
+%   suppress mean-flux mu in the processing script via mu' := mu .* exp( - optical_depth );
 
 rng('default');
 
@@ -8,7 +13,8 @@ catalog = load(sprintf('%s/catalog', processed_directory(training_release)));
 % load preprocessed QSOs
 variables_to_load = {'all_wavelengths', 'all_flux', 'all_noise_variance', ...
                      'all_pixel_mask'};
-preqsos = matfile(sprintf('%s/preloaded_qsos.mat', processed_directory(training_release)));
+load(sprintf('%s/preloaded_qsos', processed_directory(training_release)), ...
+     variables_to_load{:});
 
 % determine which spectra to use for training; allow string value for
 % train_ind
@@ -17,16 +23,11 @@ if (ischar(train_ind))
 end
 
 % select training vectors
-all_wavelengths    =          preqsos.all_wavelengths;
 all_wavelengths    =    all_wavelengths(train_ind, :);
-all_flux           =                 preqsos.all_flux;
 all_flux           =           all_flux(train_ind, :);
-all_noise_variance =       preqsos.all_noise_variance;
 all_noise_variance = all_noise_variance(train_ind, :);
-all_pixel_mask     =           preqsos.all_pixel_mask;
 all_pixel_mask     =     all_pixel_mask(train_ind, :);
-z_qsos             =        catalog.z_qsos(train_ind);
-clear preqsos
+z_qsos             =     catalog.z_qsos(train_ind);
 
 num_quasars = numel(z_qsos);
 
@@ -38,11 +39,6 @@ all_lyman_1pzs       = nan(num_forest_lines, num_quasars, num_rest_pixels);
 rest_fluxes          = nan(num_quasars, num_rest_pixels);
 rest_noise_variances = nan(num_quasars, num_rest_pixels);
 
-% the preload_qsos should fliter out empty spectra;
-% this line is to prevent there is any empty spectra
-% in preloaded_qsos.mat for some reason
-is_empty             = false(num_quasars, 1);
-
 % interpolate quasars onto chosen rest wavelength grid
 for i = 1:num_quasars
   z_qso = z_qsos(i);
@@ -52,29 +48,15 @@ for i = 1:num_quasars
   this_noise_variance = all_noise_variance{i}';
   this_pixel_mask     =     all_pixel_mask{i}';
 
-  this_rest_wavelengths = emitted_wavelengths(this_wavelengths, z_qso);
-
   this_flux(this_pixel_mask)           = nan;
   this_noise_variance(this_pixel_mask) = nan;
 
-  fprintf('processing quasar %i with lambda_size = %i %i ...\n', i, size(this_wavelengths))
-  
-  if all(size(this_wavelengths) == [0 0])
-    is_empty(i, 1) = 1;
-    continue;
-  end
+  this_rest_wavelengths = emitted_wavelengths(this_wavelengths, z_qso);
 
   lya_1pzs(i, :) = ...
       interp1(this_rest_wavelengths, ...
               1 + (this_wavelengths - lya_wavelength) / lya_wavelength, ...
               rest_wavelengths);
-  
-  % this_wavelength is raw wavelength (w/t ind)
-  % so we need an indicator here to comfine lya_1pzs
-  % below Lyman alpha (do we need to make the indicator
-  % has a lower bound at Lyman limit here?)
-  indicator = lya_1pzs(i, :) <= (1 + z_qso);
-  lya_1pzs(i, :) = lya_1pzs(i, :) .* indicator;
 
   % incldue all members in Lyman series to the forest
   for j = 1:num_forest_lines
@@ -85,45 +67,24 @@ for i = 1:num_quasars
               1 + (this_wavelengths - this_transition_wavelength) / this_transition_wavelength, ... 
               rest_wavelengths);
 
-    % indicator function: z absorbers <= z_qso
-    indicator = all_lyman_1pzs(j, i, :) <= (1 + z_qso);
+    if j > 1
+      % indicator function: z absorbers <= z_qso
+      indicator = all_lyman_1pzs(j, i, :) <= (1 + z_qso);
 
-    all_lyman_1pzs(j, i, :) = all_lyman_1pzs(j, i, :) .* indicator;
+      all_lyman_1pzs(j, i, :) = all_lyman_1pzs(j, i, :) .* indicator;    
+    end
   end
 
   rest_fluxes(i, :) = ...
       interp1(this_rest_wavelengths, this_flux,           rest_wavelengths);
 
-  %normalizing here
-  ind = (this_rest_wavelengths >= normalization_min_lambda) & ...
-        (this_rest_wavelengths <= normalization_max_lambda) & ...
-        (~this_pixel_mask);
-
-  this_median = nanmedian(this_flux(ind));
-  rest_fluxes(i, :) = rest_fluxes(i, :) / this_median;
-
   rest_noise_variances(i, :) = ...
       interp1(this_rest_wavelengths, this_noise_variance, rest_wavelengths);
-  rest_noise_variances(i, :) = rest_noise_variances(i, :) / this_median .^ 2;
 end
 clear('all_wavelengths', 'all_flux', 'all_noise_variance', 'all_pixel_mask');
 
-% filter out empty spectra
-% note: if you've done this in preload_qsos then skip these lines
-z_qsos               = z_qsos(~is_empty);
-lya_1pzs             = lya_1pzs(~is_empty, :);
-rest_fluxes          = rest_fluxes(~is_empty, :);
-rest_noise_variances = rest_noise_variances(~is_empty, :);
-all_lyman_1pzs       = all_lyman_1pzs(:, ~is_empty, :);
-
-% update num_quasars in consideration
-num_quasars = numel(z_qsos);
-
-fprintf('Get rid of empty spectra, num_quasars = %i\n', num_quasars);
-
 % mask noisy pixels
 ind = (rest_noise_variances > max_noise_variance);
-fprintf("Masking %g of pixels\n", nnz(ind)*1./numel(ind));
 lya_1pzs(ind)             = nan;
 rest_fluxes(ind)          = nan;
 rest_noise_variances(ind) = nan;
@@ -133,6 +94,7 @@ for i = 1:num_quasars
   end
 end
 
+% find empirical mean vector:
 % reverse the rest_fluxes back to the fluxes before encountering Lyα forest
 prev_tau_0 = 0.0023; % Kim et al. (2007) priors
 prev_beta  = 3.65;
@@ -142,8 +104,7 @@ rest_noise_variances_exp1pz = nan(num_quasars, num_rest_pixels);
 
 for i = 1:num_quasars
   % compute the total optical depth from all Lyman series members
-  % Apr 8: not using NaN here anymore due to range beyond Lya will all be NaNs
-  total_optical_depth = zeros(num_forest_lines, num_rest_pixels);
+  total_optical_depth = nan(num_forest_lines, num_rest_pixels);
 
   for j = 1:num_forest_lines
     % calculate the oscillator strengths for Lyman series
@@ -157,9 +118,7 @@ for i = 1:num_quasars
     total_optical_depth(j, :) = this_tau_0 .* (this_lyman_1pzs.^prev_beta);
   end
 
-  % Apr 8: using zeros instead so not nansum here anymore
-  % beyond lya, absorption fcn shoud be unity
-  lya_absorption = exp(- sum(total_optical_depth, 1) );
+  lya_absorption = exp(- nansum(total_optical_depth, 1) );
 
   % We have to reverse the effect of Lyα for both mean-flux and observational noise
   rest_fluxes_div_exp1pz(i, :)      = rest_fluxes(i, :) ./ lya_absorption;
@@ -168,21 +127,6 @@ end
 
 clear('all_lyman_1pzs');
 
-% Filter out spectra which have too many NaN pixels
-ind = sum(isnan(rest_fluxes_div_exp1pz),2) < num_rest_pixels-min_num_pixels;
-
-fprintf("Filtering %g quasars\n", length(rest_fluxes_div_exp1pz) - nnz(ind));
-
-rest_fluxes_div_exp1pz      = rest_fluxes_div_exp1pz(ind, :);
-rest_noise_variances_exp1pz = rest_noise_variances_exp1pz(ind, :);
-lya_1pzs                    = lya_1pzs(ind, :);
-
-% Check for columns which contain only NaN on either end.
-nancolfrac = sum(isnan(rest_fluxes_div_exp1pz), 1) / nnz(ind);
-fprintf("Columns with nan > 0.9: ");
-max(find(nancolfrac > 0.9))
-
-% find empirical mean vector and center data
 mu = nanmean(rest_fluxes_div_exp1pz);
 centered_rest_fluxes = bsxfun(@minus, rest_fluxes_div_exp1pz, mu);
 clear('rest_fluxes', 'rest_fluxes_div_exp1pz');
@@ -193,7 +137,7 @@ clear('rest_fluxes', 'rest_fluxes_div_exp1pz');
         'numcomponents', k, ...
         'rows',          'complete');
 
-objective_function = @(x) objective(x, centered_rest_fluxes, lya_1pzs, ...
+objective_function = @(x) objective_lyseries(x, centered_rest_fluxes, lya_1pzs, ...
         rest_noise_variances_exp1pz, num_forest_lines, all_transition_wavelengths, ...
         all_oscillator_strengths);
 
@@ -234,7 +178,7 @@ variables_to_save = {'training_release', 'train_ind', 'max_noise_variance', ...
                      'log_c_0', 'log_tau_0', 'log_beta', 'log_likelihood', ...
                      'minFunc_output'};
 
-save(sprintf('%s/learned_qso_model_%s',             ...
+save(sprintf('%s/learned_qso_model_lyseries_variance_kim_%s',             ...
              processed_directory(training_release), ...
              training_set_name), ...
      variables_to_save{:}, '-v7.3');

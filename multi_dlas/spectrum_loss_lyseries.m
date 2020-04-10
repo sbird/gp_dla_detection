@@ -12,8 +12,8 @@
 % and its derivatives wrt M, log ω, log c₉, log τ₀, and log β
 
 function [nlog_p, dM, dlog_omega, dlog_c_0, dlog_tau_0, dlog_beta] = ...
-      spectrum_loss(y, lya_1pz, noise_variance, M, omega2, c_0, tau_0, beta, ...
-      num_forest_lines, all_transition_wavelengths, all_oscillator_strengths, zqso_1pz)
+      spectrum_loss_lyseries(y, lya_1pz, noise_variance, M, omega2, c_0, tau_0, beta, ...
+          num_forest_lines, all_transition_wavelengths, all_oscillator_strengths, zqso_1pz)
 
   log_2pi = 1.83787706640934534;
 
