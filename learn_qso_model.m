@@ -94,8 +94,17 @@ for i = 1:num_quasars
   rest_fluxes(i, :) = ...
       interp1(this_rest_wavelengths, this_flux,           rest_wavelengths);
 
+  %normalizing here
+  ind = (this_rest_wavelengths >= normalization_min_lambda) & ...
+        (this_rest_wavelengths <= normalization_max_lambda) & ...
+        (~this_pixel_mask);
+
+  this_median = nanmedian(this_flux(ind));
+  rest_fluxes(i, :) = rest_fluxes(i, :) / this_median;
+
   rest_noise_variances(i, :) = ...
       interp1(this_rest_wavelengths, this_noise_variance, rest_wavelengths);
+  rest_noise_variances(i, :) = rest_noise_variances(i, :) / this_median .^ 2;
 end
 clear('all_wavelengths', 'all_flux', 'all_noise_variance', 'all_pixel_mask');
 

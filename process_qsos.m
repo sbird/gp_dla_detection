@@ -96,9 +96,9 @@ log_omega_interpolator = ...
 % sample_log_priors_dla         = nan(num_quasars, num_dla_samples);
 % sample_log_likelihoods_no_dla = nan(num_quasars, num_dla_samples);
 % sample_log_likelihoods_dla    = nan(num_quasars, num_dla_samples);
-sample_log_posteriors_no_dla  = nan(num_quasars, num_dla_samples);
-sample_log_posteriors_dla     = nan(num_quasars, num_dla_samples);
 log_posteriors_no_dla         = nan(num_quasars, 1);
+log_posteriors_dla_sub        = nan(num_quasars, 1);
+log_posteriors_dla_sup        = nan(num_quasars, 1);
 log_posteriors_dla            = nan(num_quasars, 1);
 z_true                        = nan(num_quasars, 1);
 dla_true                      = nan(num_quasars, 1);
@@ -121,7 +121,7 @@ this_p_dlas              = zeros(length(z_list), 1);
 
 quasar_ind = 1;
 try
-    load(['./test/testmats/mcmc/curDLA_', optTag, '.mat']); %checkmarking code
+    load(['./checkpointing/curDLA_', optTag, '.mat']); %checkmarking code
 catch ME
     0;
 end
@@ -133,7 +133,6 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     
     z_true(quasar_ind)   = z_qsos(quasar_num);
     dla_true(quasar_ind) = dla_inds(quasar_num);
-    
     fprintf('processing quasar %i/%i (z_true = %0.4f) ...', ...
         quasar_ind, num_quasars, z_true(quasar_ind));
 
@@ -142,7 +141,7 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     this_flux           =           all_flux{quasar_num};
     this_noise_variance = all_noise_variance{quasar_num};
     this_pixel_mask     =     all_pixel_mask{quasar_num};
-    
+
     this_rest_wavelengths = emitted_wavelengths(this_wavelengths, 4.4088); %roughly highest redshift possible (S2N for everything that may be in restframe)
 
     ind  = this_rest_wavelengths <= max_lambda;
@@ -184,7 +183,7 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         this_flux           =           all_flux{quasar_num};
         this_noise_variance = all_noise_variance{quasar_num};
         this_pixel_mask     =     all_pixel_mask{quasar_num};
-        
+
         %interpolate observations
         rframe_len = 1000;
 
@@ -204,17 +203,25 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         this_wavelengths = vq_range;
 
         % convert to QSO rest frame
-        this_rest_wavelengths = emitted_wavelengths(this_wavelengths, z_qso);        
-        
+        this_rest_wavelengths = emitted_wavelengths(this_wavelengths, z_qso);
+
+        %normalizing here
+        ind = (this_rest_wavelengths >= normalization_min_lambda) & ...
+            (this_rest_wavelengths <= normalization_max_lambda);
+
+        this_median = nanmedian(this_flux(ind));
+        this_flux = this_flux / this_median;
+        this_noise_variance = this_noise_variance / this_median .^ 2;
+
         ind = (this_rest_wavelengths >= min_lambda) & ...
             (this_rest_wavelengths <= max_lambda);
-        
+
         % keep complete copy of equally spaced wavelengths for absorption
         % computation
         this_unmasked_wavelengths = this_wavelengths(ind);
-        
+
         %ind = ind & (~this_pixel_mask);
-        
+
         this_wavelengths      =      this_wavelengths(ind);
         this_rest_wavelengths = this_rest_wavelengths(ind);
         this_flux             =             this_flux(ind);
@@ -240,7 +247,7 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
 
         % DLA existence prior
         less_ind = (prior.z_qsos < (z_qso + prior_z_qso_increase));
-        
+
         this_num_dlas    = nnz(prior.dla_ind(less_ind));
         this_num_quasars = nnz(less_ind);
         this_p_dla       = this_num_dlas / this_num_quasars;
@@ -263,14 +270,14 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         % fprintf_debug('\n');
         fprintf_debug(' ...     p(   DLA | z_QSO)        : %0.3f\n',     this_p_dla);
         fprintf_debug(' ...     p(no DLA | z_QSO)        : %0.3f\n', 1 - this_p_dla);
-        
+
         % interpolate model onto given wavelengths
         this_mu = mu_interpolator( this_rest_wavelengths);
         this_M  =  M_interpolator({this_rest_wavelengths, 1:k});
         %Debug output
         %all_mus{z_list_ind} = this_mu;
         %all_Ms{z_list_ind} = this_M;
-        
+
         this_log_omega = log_omega_interpolator(this_rest_wavelengths);
         this_omega2 = exp(2 * this_log_omega);
         
@@ -301,7 +308,7 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         this_scaling_factor = 1 - exp( -lya_optical_depth ) + c_0;
         
         this_omega2 = this_omega2 .* this_scaling_factor.^2;
-        
+
         %no noise after ly_alpha peak @ 1215.67 in rest frame
         ind_w = find(this_rest_wavelengths > lya_wavelength);
         this_omega2(ind_w) = .001;
@@ -382,22 +389,22 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
             log10(max(this_unmasked_wavelengths)) + width * pixel_spacing, ...
             width)'                                                        ...
             ];
-        
+
         % to retain only unmasked pixels from computed absorption profile
         ind = (~this_pixel_mask(ind));
-        
+
         % compute probabilities under DLA model for each of the sampled
         % (normalized offset, log(N HI)) pairs
         % absorption corresponding to this sample
         absorption = voigt(padded_wavelengths, sample_z_dlas(i), ...
-            nhi_samples(i), num_lines);        
-        
+            nhi_samples(i), num_lines);
+
         % delta z = v / c = H(z) d / c = 70 (km/s/Mpc) * sqrt(0.3 * (1+z)^3 + 0.7) * (5 Mpc) / (3x10^5 km/s) ~ 0.005 at z=3
         if add_proximity_zone
             delta_z = (70 * sqrt(.3 * (1+z_qso)^3 + .7) * 5) / (3 * 10^5);
         end
-        
-        
+
+
         dla_mu     = this_mu     .* absorption;
         dla_M      = this_M      .* absorption;
         dla_omega2 = this_omega2 .* absorption.^2;
@@ -411,16 +418,28 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         %     this_sample_log_priors_dla(1, i) + this_sample_log_likelihoods_dla(1, i);
     end
 
+    DLA_cut = 20.3;
+    sub20pt3_ind = (log_nhi_samples < DLA_cut);
+
     % indicing sample_log_posteriors instead of assignments to avoid create a new array
     sample_log_posteriors_no_dla(quasar_ind, :) = ...
         this_sample_log_priors_no_dla(1, :) + this_sample_log_likelihoods_no_dla(1, :);
     sample_log_posteriors_dla(quasar_ind, :)    = ...
         this_sample_log_priors_dla(1, :)    + this_sample_log_likelihoods_dla(1, :);
+    sample_log_posteriors_dla_sub(quasar_ind, :) = this_sample_log_priors_dla(1, sub20pt3_ind) + this_sample_log_likelihoods_dla(1, sub20pt3_ind);
+    sample_log_posteriors_dla_sup(quasar_ind, :) = this_sample_log_priors_dla(1, ~sub20pt3_ind) + this_sample_log_likelihoods_dla(1, ~sub20pt3_ind);
 
     % use nanmax to avoid NaN potentially in the samples
     % not sure whether the z code has many NaNs in array; the multi-dla codes have many NaNs
     max_log_likelihood_no_dla = nanmax(sample_log_posteriors_no_dla(quasar_ind, :));
     max_log_likelihood_dla    = nanmax(sample_log_posteriors_dla(quasar_ind, :));
+    max_log_likelihood_dla_sub = nanmax(sample_log_posteriors_dla_sub(quasar_ind, :));
+    max_log_likelihood_dla_sup = nanmax(sample_log_posteriors_dla_sup(quasar_ind, :));
+
+    probabilities_no_dla = exp(sample_log_posteriors_no_dla - max_log_likelihood_no_dla);
+    probabilities_dla = exp(sample_log_posteriors_dla - max_log_likelihood_dla);
+    probabilities_dla_sub = exp(sample_log_posteriors_dla_sub - max_log_likelihood_dla_sub);
+    probabilities_dla_sup = exp(sample_log_posteriors_dla_sup - max_log_likelihood_dla_sup);
 
     probabilities_no_dla = ...
         exp(sample_log_posteriors_no_dla(quasar_ind, :) - ...
@@ -428,16 +447,21 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     probabilities_dla    = ... 
         exp(sample_log_posteriors_dla(quasar_ind, :) - ...
             max_log_likelihood_dla);
+    probabilities_dla_sub = exp(sample_log_posteriors_dla_sub(quasar_ind, :) - max_log_likelihood_dla_sub);
+    probabilities_dla_sup = exp(sample_log_posteriors_dla_sup(quasar_ind, :) - max_log_likelihood_dla_sup);
 
     [~, I] = nanmax(probabilities_no_dla + probabilities_dla);
+
     z_map(quasar_ind) = offset_samples_qso(I);                                  %MAP estimate
 
     [~, I] = nanmax(probabilities_dla);
     z_dla_map(quasar_ind) = used_z_dla(I);
-    n_hi_map(quasar_ind)  = nhi_samples(I);
+    n_hi_map(quasar_ind) = nhi_samples(I);
 
-    log_posteriors_no_dla(quasar_ind) = log(nanmean(probabilities_no_dla)) + max_log_likelihood_no_dla;   %Expected
-    log_posteriors_dla(quasar_ind)    = log(nanmean(probabilities_dla))    + max_log_likelihood_dla;      %Expected
+    log_posteriors_no_dla(quasar_ind) = log(mean(probabilities_no_dla)) + max_log_likelihood_no_dla;   %Expected
+    log_posteriors_dla(quasar_ind) = log(mean(probabilities_dla)) + max_log_likelihood_dla;            %Expected
+    log_posteriors_dla_sub(quasar_ind) = log(mean(probabilities_dla_sub)) + max_log_likelihood_dla_sub;            %Expected
+    log_posteriors_dla_sup(quasar_ind) = log(mean(probabilities_dla_sup)) + max_log_likelihood_dla_sup;            %Expected
 
     %fprintf_debug(' ... log p(D | z_QSO,    DLA)     : %0.2f\n', ...
     %    log_likelihoods_dla(quasar_ind));
@@ -445,20 +469,19 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         log_posteriors_dla(quasar_ind));
 
     fprintf(' took %0.3fs.\n', toc);
-    
-    if mod(quasar_ind, 5) == 0
-        save(['./test/testmats/mcmc/curDLA_', optTag, '.mat'], 'log_posteriors_dla', 'log_posteriors_no_dla', 'z_true', 'dla_true', 'quasar_ind', 'quasar_num',...
-            'sample_log_posteriors_no_dla', 'used_z_dla', 'nhi_samples', 'offset_samples_qso', 'offset_samples', 'z_map', 'signal_to_noise', 'z_dla_map', 'n_hi_map');
+    if mod(quasar_ind, 50) == 0
+        save(['./checkpointing/curDLA_', optTagFull, '.mat'], 'log_posteriors_dla_sub', 'log_posteriors_dla_sup', 'log_posteriors_dla', 'log_posteriors_no_dla', 'z_true', 'dla_true', 'quasar_ind', 'quasar_num',...
+            'sample_log_likelihoods_dla', 'sample_log_likelihoods_no_dla', 'sample_z_dlas', 'nhi_samples', 'offset_samples_qso', 'offset_samples', 'z_map', 'signal_to_noise', 'z_dla_map', 'n_hi_map');
     end
 end
 
 
 % compute model posteriors in numerically safe manner
 max_log_posteriors = ...
-    max([log_posteriors_no_dla, log_posteriors_dla], [], 2);
+    max([log_posteriors_no_dla, log_posteriors_dla_sub, log_posteriors_dla_sup], [], 2);
 
 model_posteriors = ...
-    exp([log_posteriors_no_dla, log_posteriors_dla] - max_log_posteriors);
+    exp([log_posteriors_no_dla,  log_posteriors_dla_sub, log_posteriors_dla_sup] - max_log_posteriors);
 
 model_posteriors = model_posteriors ./ sum(model_posteriors, 2);
 
