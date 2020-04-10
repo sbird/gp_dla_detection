@@ -158,17 +158,19 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     % this is saved for the MAP esitmate of z_QSO
     used_z_dla                         = nan(num_dla_samples, 1);
 
-    parfor i = 1:length(offset_samples_qso) %variant redshift in quasars
+    % use num_dla_samples to prevent potential parfor issue (we are using offset_samples_qso in the loop)
+    parfor i = 1:num_dla_samples       %variant redshift in quasars 
         z_qso = offset_samples_qso(i);
-        
+
         % only use i to allow parfor
         % i = z_list_ind;
 
-        if mod(i, 500) == 0
-            fprintf('processing quasar %i of %i, true num %i, iteration %i (z_QSO = %0.4f) ...\n', ...
-                quasar_ind, length(qso_ind), quasar_num, i, z_qso);
-        end
-        
+        % mask out this to prevent potential parfor issue
+        % if mod(i, 500) == 0
+        %     fprintf('processing quasar %i of %i, true num %i, iteration %i (z_QSO = %0.4f) ...\n', ...
+        %         quasar_ind, length(qso_ind), quasar_num, i, z_qso);
+        % end
+
         this_wavelengths    =    all_wavelengths{quasar_num};
         this_flux           =           all_flux{quasar_num};
         this_noise_variance = all_noise_variance{quasar_num};
@@ -249,7 +251,7 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         %sample_log_priors_dla(quasar_ind, z_list_ind) = log(.5);
         %sample_log_priors_no_dla(quasar_ind, z_list_ind) = log(.5);
 
-        fprintf_debug('\n');
+        % fprintf_debug('\n');
         fprintf_debug(' ...     p(   DLA | z_QSO)        : %0.3f\n',     this_p_dla);
         fprintf_debug(' ...     p(no DLA | z_QSO)        : %0.3f\n', 1 - this_p_dla);
         
