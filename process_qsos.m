@@ -121,13 +121,13 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     quasar_num = qso_ind(quasar_ind);
     z_true(quasar_ind) = z_qsos(quasar_num);
     dla_true(quasar_ind) = dla_inds(quasar_num);
-    
+
     %computing signal-to-noise ratio
     this_wavelengths    =    all_wavelengths{quasar_num};
     this_flux           =           all_flux{quasar_num};
     this_noise_variance = all_noise_variance{quasar_num};
     this_pixel_mask     =     all_pixel_mask{quasar_num};
-    
+
     this_rest_wavelengths = emitted_wavelengths(this_wavelengths, 4.4088); %roughly highest redshift possible (S2N for everything that may be in restframe)
     ind  = this_rest_wavelengths <= max_lambda;
     this_rest_wavelengths = this_rest_wavelengths(ind);
@@ -138,21 +138,21 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     signal_to_noise(quasar_num) = mean(this_pixel_signal_to_noise);
     %
     used_z_dla                         = nan(length(offset_samples_qso), 1);
-    
+
     for z_list_ind = 1:length(offset_samples_qso) %variant redshift in quasars
         z_qso = offset_samples_qso(z_list_ind);
         i = z_list_ind;
-        
+
         if mod(i, 500) == 0
             fprintf('processing quasar %i of %i, true num %i, iteration %i (z_QSO = %0.4f) ...\n', ...
                 quasar_ind, length(qso_ind), quasar_num, z_list_ind, z_qso);
         end
-        
+
         this_wavelengths    =    all_wavelengths{quasar_num};
         this_flux           =           all_flux{quasar_num};
         this_noise_variance = all_noise_variance{quasar_num};
         this_pixel_mask     =     all_pixel_mask{quasar_num};
-        
+
         %interpolate observations
         rframe_len = 1000;
         max_observed_lambda = observed_wavelengths(max_lambda, z_qso);
@@ -178,94 +178,93 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
 
         ind = (this_rest_wavelengths >= min_lambda) & ...
             (this_rest_wavelengths <= max_lambda);
-        
+
         % keep complete copy of equally spaced wavelengths for absorption
         % computation
         this_unmasked_wavelengths = this_wavelengths(ind);
-        
+
         %ind = ind & (~this_pixel_mask);
-        
+
         this_wavelengths      =      this_wavelengths(ind);
         this_rest_wavelengths = this_rest_wavelengths(ind);
         this_flux             =             this_flux(ind);
         this_noise_variance   =   this_noise_variance(ind);
         this_noise_variance(isinf(this_noise_variance)) = mean(this_noise_variance); %rare kludge to fix bad data
-        
         fluxes{z_list_ind} = this_flux;
         rest_wavelengths{z_list_ind} = this_rest_wavelengths;
-        
+
         this_lya_zs = ...
             (this_wavelengths - lya_wavelength) / ...
             lya_wavelength;
-        
+
         % DLA existence prior
         less_ind = (prior.z_qsos < (z_qso + prior_z_qso_increase));
-        
+
         this_num_dlas    = nnz(prior.dla_ind(less_ind));
         this_num_quasars = nnz(less_ind);
         this_p_dla = this_num_dlas / this_num_quasars;
         this_p_dlas(z_list_ind) = this_p_dla;
-        
+
         %minimal plausible prior to prevent NaN on low z_qso;
         if this_num_dlas == 0
             this_num_dlas = 1;
             this_num_quasars = length(less_ind);
         end
-        
+
         sample_log_priors_dla(quasar_ind, z_list_ind) = ...
             log(                   this_num_dlas) - log(this_num_quasars);
         sample_log_priors_no_dla(quasar_ind, z_list_ind) = ...
             log(this_num_quasars - this_num_dlas) - log(this_num_quasars);
-        
+
         %sample_log_priors_dla(quasar_ind, z_list_ind) = log(.5);
         %sample_log_priors_no_dla(quasar_ind, z_list_ind) = log(.5);
-        
+
         fprintf_debug('\n');
         fprintf_debug(' ...     p(   DLA | z_QSO)        : %0.3f\n',     this_p_dla);
         fprintf_debug(' ...     p(no DLA | z_QSO)        : %0.3f\n', 1 - this_p_dla);
-        
+
         % interpolate model onto given wavelengths
         this_mu = mu_interpolator( this_rest_wavelengths);
         this_M  =  M_interpolator({this_rest_wavelengths, 1:k});
         %Debug output
         %all_mus{z_list_ind} = this_mu;
         %all_Ms{z_list_ind} = this_M;
-        
+
         this_log_omega = log_omega_interpolator(this_rest_wavelengths);
         this_omega2 = exp(2 * this_log_omega);
-        
+
         this_scaling_factor = 1 - exp(-tau_0 .* (1 + this_lya_zs).^beta) + c_0;
-        
+
         this_omega2 = this_omega2 .* this_scaling_factor.^2;
-        
+
         %no noise after ly_alpha peak @ 1215.67 in rest frame
         ind_w = find(this_rest_wavelengths > lya_wavelength);
         this_omega2(ind_w) = .001;
-        
+
         % baseline: probability of no DLA model
         sample_log_likelihoods_no_dla(quasar_ind, z_list_ind) = ...
             log_mvnpdf_low_rank(this_flux, this_mu, this_M, ...
             this_omega2 + this_noise_variance);
-        
+
         sample_log_posteriors_no_dla(quasar_ind, z_list_ind) = ...
             sample_log_priors_no_dla(quasar_ind, z_list_ind) + sample_log_likelihoods_no_dla(quasar_ind, z_list_ind);
-        
+
         fprintf_debug(' ... log p(D | z_QSO, no DLA)     : %0.2f\n', ...
             sample_log_likelihoods_no_dla(quasar_ind, z_list_ind));
-        
+
         % Add
         if isempty(this_wavelengths)
             continue;
         end
-        
+
         min_z_dlas(quasar_ind) = min_z_dla(this_wavelengths, z_qso);
         max_z_dlas(quasar_ind) = max_z_dla(this_wavelengths, z_qso);
-        
+
         sample_z_dlas = ...
             min_z_dlas(quasar_ind) +  ...
             (max_z_dlas(quasar_ind) - min_z_dlas(quasar_ind)) * offset_samples;
         used_z_dla(i) = sample_z_dlas(i);
-        
+
         % ensure enough pixels are on either side for convolving with
         % instrument profile
         padded_wavelengths = ...
