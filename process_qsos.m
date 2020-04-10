@@ -134,6 +134,9 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     z_true(quasar_ind)   = z_qsos(quasar_num);
     dla_true(quasar_ind) = dla_inds(quasar_num);
     
+    fprintf('processing quasar %i/%i (z_true = %0.4f) ...', ...
+        quasar_ind, num_quasars, z_true(quasar_ind));
+
     %computing signal-to-noise ratio
     this_wavelengths    =    all_wavelengths{quasar_num};
     this_flux           =           all_flux{quasar_num};
