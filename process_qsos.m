@@ -167,7 +167,8 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     this_sample_log_likelihoods_dla    = nan(1, num_dla_samples);
 
     % use num_dla_samples to prevent potential parfor issue (we are using offset_samples_qso in the loop)
-    parfor i = 1:num_dla_samples       %variant redshift in quasars 
+    % parfor removed as it doesn't speed up much
+    for i = 1:num_dla_samples       %variant redshift in quasars 
         z_qso = offset_samples_qso(i);
 
         % only use i to allow parfor
