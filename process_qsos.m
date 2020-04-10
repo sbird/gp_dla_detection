@@ -90,12 +90,12 @@ log_omega_interpolator = ...
 
 % initialize results
 % prevent parfor error, should use nan(num_quasars, num_dla_samples); or not save these variables;
-min_z_dlas                    = nan(num_quasars, num_dla_samples);
-max_z_dlas                    = nan(num_quasars, num_dla_samples);
-sample_log_priors_no_dla      = nan(num_quasars, num_dla_samples);
-sample_log_priors_dla         = nan(num_quasars, num_dla_samples);
-sample_log_likelihoods_no_dla = nan(num_quasars, num_dla_samples);
-sample_log_likelihoods_dla    = nan(num_quasars, num_dla_samples);
+% min_z_dlas                    = nan(num_quasars, num_dla_samples);
+% max_z_dlas                    = nan(num_quasars, num_dla_samples);
+% sample_log_priors_no_dla      = nan(num_quasars, num_dla_samples); % comment out these to save memory
+% sample_log_priors_dla         = nan(num_quasars, num_dla_samples);
+% sample_log_likelihoods_no_dla = nan(num_quasars, num_dla_samples);
+% sample_log_likelihoods_dla    = nan(num_quasars, num_dla_samples);
 sample_log_posteriors_no_dla  = nan(num_quasars, num_dla_samples);
 sample_log_posteriors_dla     = nan(num_quasars, num_dla_samples);
 log_posteriors_no_dla         = nan(num_quasars, 1);
@@ -157,6 +157,12 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
 
     % this is saved for the MAP esitmate of z_QSO
     used_z_dla                         = nan(num_dla_samples, 1);
+
+    % initialise some dummy arrays to reduce memory consumption 
+    this_sample_log_priors_no_dla      = nan(1, num_dla_samples);
+    this_sample_log_priors_dla         = nan(1, num_dla_samples);
+    this_sample_log_likelihoods_no_dla = nan(1, num_dla_samples);
+    this_sample_log_likelihoods_dla    = nan(1, num_dla_samples);
 
     % use num_dla_samples to prevent potential parfor issue (we are using offset_samples_qso in the loop)
     parfor i = 1:num_dla_samples       %variant redshift in quasars 
@@ -243,9 +249,9 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
             this_num_quasars = length(less_ind);
         end
         
-        sample_log_priors_dla(quasar_ind, i) = ...
+        this_sample_log_priors_dla(1, i) = ...
             log(                   this_num_dlas) - log(this_num_quasars);
-        sample_log_priors_no_dla(quasar_ind, i) = ...
+        this_sample_log_priors_no_dla(1, i) = ...
             log(this_num_quasars - this_num_dlas) - log(this_num_quasars);
 
         %sample_log_priors_dla(quasar_ind, z_list_ind) = log(.5);
@@ -332,15 +338,16 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         this_omega2 = this_omega2 .* lya_absorption.^2;
         
         % baseline: probability of no DLA model
-        sample_log_likelihoods_no_dla(quasar_ind, i) = ...
+        this_sample_log_likelihoods_no_dla(1, i) = ...
             log_mvnpdf_low_rank(this_flux, this_mu, this_M, ...
             this_omega2 + this_noise_variance);
         
-        sample_log_posteriors_no_dla(quasar_ind, i) = ...
-            sample_log_priors_no_dla(quasar_ind, i) + sample_log_likelihoods_no_dla(quasar_ind, i);
+        % duplicated
+        % sample_log_posteriors_no_dla(quasar_ind, i) = ...
+        %     this_sample_log_priors_no_dla(1, i) + this_sample_log_likelihoods_no_dla(1, i);
 
         fprintf_debug(' ... log p(D | z_QSO, no DLA)     : %0.2f\n', ...
-            sample_log_likelihoods_no_dla(quasar_ind, i));
+            this_sample_log_likelihoods_no_dla(1, i));
 
         % Add
         if isempty(this_wavelengths)
@@ -352,8 +359,8 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         this_min_z_dlas = min_z_dla(this_wavelengths, z_qso);
         this_max_z_dlas = max_z_dla(this_wavelengths, z_qso);
 
-        min_z_dlas(quasar_ind, i) = this_min_z_dlas;
-        max_z_dlas(quasar_ind, i) = this_max_z_dlas;
+        % min_z_dlas(quasar_ind, i) = this_min_z_dlas;
+        % max_z_dlas(quasar_ind, i) = this_max_z_dlas;
 
         sample_z_dlas = ...
             this_min_z_dlas +  ...
@@ -392,16 +399,19 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         dla_M      = this_M      .* absorption;
         dla_omega2 = this_omega2 .* absorption.^2;
         
-        sample_log_likelihoods_dla(quasar_ind, i) = ...
+        sample_log_likelihoods_dla(1, i) = ...
             log_mvnpdf_low_rank(this_flux, dla_mu, dla_M, ...
             dla_omega2 + this_noise_variance);
         
-        sample_log_posteriors_dla(quasar_ind, i) = ...
-            sample_log_priors_dla(quasar_ind, i) + sample_log_likelihoods_dla(quasar_ind, i);
+        % duplicated
+        % sample_log_posteriors_dla(quasar_ind, i) = ...
+        %     this_sample_log_priors_dla(1, i) + this_sample_log_likelihoods_dla(1, i);
     end
 
-    sample_log_posteriors_no_dla = sample_log_priors_no_dla(quasar_ind, :) + sample_log_likelihoods_no_dla(quasar_ind, :);
-    sample_log_posteriors_dla    = sample_log_priors_dla(quasar_ind, :)    + sample_log_likelihoods_dla(quasar_ind, :);
+    sample_log_posteriors_no_dla(quasar_ind, :) = ...
+        this_sample_log_priors_no_dla(1, :) + this_sample_log_likelihoods_no_dla(1, :);
+    sample_log_posteriors_dla(quasar_ind, :)    = ...
+        this_sample_log_priors_dla(1, :)    + this_sample_log_likelihoods_dla(1, :);
 
     % use nanmax to avoid NaN potentially in the samples
     % not sure whether the z code has many NaNs in array; the multi-dla codes have many NaNs
@@ -428,9 +438,9 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
 
     fprintf(' took %0.3fs.\n', toc);
     
-    if mod(quasar_ind, 2) == 0
+    if mod(quasar_ind, 5) == 0
         save(['./test/testmats/mcmc/curDLA_', optTag, '.mat'], 'log_posteriors_dla', 'log_posteriors_no_dla', 'z_true', 'dla_true', 'quasar_ind', 'quasar_num',...
-            'sample_log_likelihoods_dla', 'sample_log_likelihoods_no_dla', 'sample_z_dlas', 'nhi_samples', 'offset_samples_qso', 'offset_samples', 'z_map', 'signal_to_noise', 'z_dla_map', 'n_hi_map');
+            'sample_log_posteriors_no_dla', 'sample_z_dlas', 'nhi_samples', 'offset_samples_qso', 'offset_samples', 'z_map', 'signal_to_noise', 'z_dla_map', 'n_hi_map');
     end
 end
 
@@ -451,13 +461,14 @@ p_dlas    = 1 - p_no_dlas;
 variables_to_save = {'training_release', 'training_set_name', ...
     'dla_catalog_name', 'release', ...
     'test_set_name', 'test_ind', 'prior_z_qso_increase', ...
-    'max_z_cut', 'num_lines', 'min_z_dlas', 'max_z_dlas', ...
-    'sample_log_priors_no_dla', 'sample_log_priors_dla', ...
-    'sample_log_likelihoods_no_dla', 'sample_log_likelihoods_dla', ...
+    'max_z_cut', 'num_lines', ... %'min_z_dlas', 'max_z_dlas', ... % save memory
+    'sample_log_posteriors_no_dla', 'sample_log_posteriors_dla', ...
     'log_posteriors_no_dla', 'log_posteriors_dla', ...
     'model_posteriors', 'p_no_dlas', ...
     'p_dlas', 'z_map', 'z_true', 'dla_true', 'z_dla_map', 'n_hi_map', 'signal_to_noise', 'all_thing_ids'};
 
+    % 'sample_log_priors_no_dla', 'sample_log_priors_dla', ...
+    % 'sample_log_likelihoods_no_dla', 'sample_log_likelihoods_dla', ...
 
 filename = sprintf('%s/processed_qsos_%s-%s', ...
     processed_directory(release), ...
