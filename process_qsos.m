@@ -190,7 +190,6 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         max_observed_lambda = min(max_pos_lambda, max(this_wavelengths));
 
         min_observed_lambda = max(min_pos_lambda, min(this_wavelengths));
-        lambda_not_observed = (max_pos_lambda - min_pos_lambda) - (max_observed_lambda - min_observed_lambda);
 
         ind = (this_wavelengths > min_observed_lambda) & (this_wavelengths < max_observed_lambda);
         this_flux = this_flux(ind);
@@ -341,7 +340,7 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         % baseline: probability of no DLA model
         this_sample_log_likelihoods_no_dla(1, i) = ...
             log_mvnpdf_low_rank(this_flux, this_mu, this_M, ...
-            this_omega2 + this_noise_variance);
+            this_omega2 + this_noise_variance) + log(lambda_observed/ dlambda);
         
         % duplicated
         % sample_log_posteriors_no_dla(quasar_ind, i) = ...
@@ -401,9 +400,10 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         dla_omega2 = this_omega2 .* absorption.^2;
         
         % Add a penalty for short spectra: the expected reduced chi^2 of each spectral pixel that would have been observed.
+        lambda_observed = (max_observed_lambda - min_observed_lambda);
         this_sample_log_likelihoods_dla(1, i) = ...
             log_mvnpdf_low_rank(this_flux, dla_mu, dla_M, ...
-            dla_omega2 + this_noise_variance) - lambda_not_observed/ dlambda;
+            dla_omega2 + this_noise_variance) + log(lambda_observed/ dlambda);
         
         % duplicated
         % sample_log_posteriors_dla(quasar_ind, i) = ...
