@@ -24,37 +24,38 @@ observed_wavelengths = ...
     @(emitted_wavelengths,  z) ( emitted_wavelengths * (1 + z));
 
 % file loading parameters
-loading_min_lambda = 700;                % range of rest wavelengths to load  Å
+loading_min_lambda = 700;                   % range of rest wavelengths to load  Å
 loading_max_lambda = 2400;                  % This maximum is set so we include CIV.
 % The maximum allowed is set so that even if the peak is redshifted off the end, the
 % quasar still has data in the range
 
 % preprocessing parameters
 z_qso_cut      = 2.15;                        % filter out QSOs with z less than this threshold
-z_qso_training_max_cut = 3.5; % roughly 95% of training data occurs before this redshift; assuming for normalization purposes (move to set_parameters when pleased)
+z_qso_training_max_cut = 3.5;                 % roughly 95% of training data occurs before this redshift; assuming for normalization purposes (move to set_parameters when pleased)
 min_num_pixels = 400;                         % minimum number of non-masked pixels
 
 % normalization parameters
 normalization_min_lambda = lya_wavelength;              % range of rest wavelengths to use   Å
-normalization_max_lambda = lya_wavelength + 250; %   for flux normalization
+normalization_max_lambda = lya_wavelength + 250;        %   for flux normalization
 
 % null model parameters
-min_lambda         =  910;                 % range of rest wavelengths to       Å
-max_lambda         = 1600;                 %   model
-dlambda            = 0.25;                 % separation of wavelength grid      Å
+min_lambda         =  910;                    % range of rest wavelengths to       Å
+max_lambda         = 1600;                    %   model
+dlambda            = 0.25;                    % separation of wavelength grid      Å
 k                  = 20;                      % rank of non-diagonal contribution
 max_noise_variance = 1^2;                     % maximum pixel noise allowed during model training
 
 % optimization parameters
-initial_c_0   = 0.1;                          % initial guess for c₀
-initial_tau_0 = 0.0023;                       % initial guess for τ₀
-initial_beta  = 3.65;                         % initial guess for β
+% Apr 10: change to optimal values in multi-DLA paper
+initial_c_0   = 0.3050;                       % initial guess for c₀
+initial_tau_0 = 0.000164;                     % initial guess for τ₀
+initial_beta  = 5.2714;                       % initial guess for β
 minFunc_options =               ...           % optimization options for model fitting
     struct('MaxIter',     2000, ...
            'MaxFunEvals', 4000);
 
 % DLA model parameters: parameter samples
-num_dla_samples     = 100000;                  % number of parameter samples
+num_dla_samples     = 100000;                 % number of parameter samples
 alpha               = 0.9;                    % weight of KDE component in mixture
 uniform_min_log_nhi = 20.0;                   % range of column density samples    [cm⁻²]
 uniform_max_log_nhi = 23.0;                   % from uniform distribution
