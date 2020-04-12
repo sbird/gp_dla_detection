@@ -12,7 +12,7 @@
 % and its derivatives wrt M, log ω, log c₉, log τ₀, and log β
 
 function [nlog_p, dM, dlog_omega, dlog_c_0, dlog_tau_0, dlog_beta] = ...
-      spectrum_loss(y, lya_1pz, noise_variance, M, omega2, c_0, tau_0, beta, ...
+      spectrum_loss_meanflux(y, lya_1pz, noise_variance, M, omega2, c_0, tau_0, beta, ...
       num_forest_lines, all_transition_wavelengths, all_oscillator_strengths, zqso_1pz)
 
   log_2pi = 1.83787706640934534;
@@ -24,6 +24,8 @@ function [nlog_p, dM, dlog_omega, dlog_c_0, dlog_tau_0, dlog_beta] = ...
 
   % compute approximate Lyman series optical depth/absorption
   % using the scaling relationship
+  indicator         = lya_1pz <= zqso_1pz;
+  lya_optical_depth = lya_optical_depth .* indicator;
 
   for i = 2:num_forest_lines
     lyman_1pz = all_transition_wavelengths(1) .* lya_1pz ...
@@ -87,7 +89,9 @@ function [nlog_p, dM, dlog_omega, dlog_c_0, dlog_tau_0, dlog_beta] = ...
   dlog_tau_0 = -(K_inv_y .* da)' * K_inv_y + diag_K_inv' * da;
 
   % gradient wrt log β
-  da = da .* log(lya_1pz) * beta;
+  % Apr 12: inject indicator in the gradient but outside the log 
+  indicator = lya_1pz <= zqso_1pz;
+  da = da .* log(lya_1pz) * beta .* indicator;
   dlog_beta  = -(K_inv_y .* da)' * K_inv_y + diag_K_inv' * da;
 
 end

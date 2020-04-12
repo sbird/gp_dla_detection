@@ -9,9 +9,9 @@
 %   f(x) = -∑ᵢ log(yᵢ | Lyα z, σ², M, ω, c₀, τ₉, β)
 %   g(x) = ∂f/∂x
 
-function [f, g] = objective(x, centered_rest_fluxes, lya_1pzs, ...
+function [f, g] = objective_meanflux(x, centered_rest_fluxes, lya_1pzs, ...
           rest_noise_variances, num_forest_lines, all_transition_wavelengths, ...
-          all_oscillator_strengths)
+          all_oscillator_strengths, z_qsos)
 
   [num_quasars, num_pixels] = size(centered_rest_fluxes);
 
@@ -42,18 +42,13 @@ function [f, g] = objective(x, centered_rest_fluxes, lya_1pzs, ...
   for i = 1:num_quasars
     ind = (~isnan(centered_rest_fluxes(i, :)));
 
-    % in objective_lyseries.m the trick is to use the final
-    % element of lya_1pzs to acquire 1+zqso; the trick would
-    % not work here since lya_1pz is beyond 1 + zqso 
-    % (beyond lylimit to lya).
-    % Instead, we assume we've already applied an indicator
-    % on lya_1pzs, so maximum value of it would be 1 + z_qso
-    % get zqso + 1 from lya_1pzs
-    zqso_1pz = max(lya_1pzs(i, :));
+    % Apr 12: directly pass z_qsos in the argument since we don't want
+    % zeros in lya_1pzs to mess up the gradients in spectrum_loss
+    zqso_1pz = z_qsos(i) + 1;
 
     [this_f, this_dM, this_dlog_omega, ...
      this_dlog_c_0, this_dlog_tau_0, this_dlog_beta] ...
-        = spectrum_loss(centered_rest_fluxes(i, ind)', lya_1pzs(i, ind)', ...
+        = spectrum_loss_meanflux(centered_rest_fluxes(i, ind)', lya_1pzs(i, ind)', ...
                         rest_noise_variances(i, ind)', M(ind, :), omega2(ind), ...
                         c_0, tau_0, beta, num_forest_lines, all_transition_wavelengths, ...
                         all_oscillator_strengths, zqso_1pz);

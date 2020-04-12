@@ -173,6 +173,7 @@ ind = sum(isnan(rest_fluxes_div_exp1pz),2) < num_rest_pixels-min_num_pixels;
 
 fprintf("Filtering %g quasars\n", length(rest_fluxes_div_exp1pz) - nnz(ind));
 
+z_qsos                      = z_qsos(ind);
 rest_fluxes_div_exp1pz      = rest_fluxes_div_exp1pz(ind, :);
 rest_noise_variances_exp1pz = rest_noise_variances_exp1pz(ind, :);
 lya_1pzs                    = lya_1pzs(ind, :);
@@ -193,8 +194,9 @@ clear('rest_fluxes');
         'numcomponents', k, ...
         'rows',          'complete');
 
-objective_function = @(x) objective(x, centered_rest_fluxes, lya_1pzs, ...
-        rest_noise_variances_exp1pz);
+objective_function = @(x) objective_meanflux(x, centered_rest_fluxes, lya_1pzs, ...
+        rest_noise_variances_exp1pz, num_forest_lines, all_transition_wavelengths, ...
+        all_oscillator_strengths, z_qsos);
 
 % initialize A to top-k PCA components of non-DLA-containing spectra
 initial_M = bsxfun(@times, coefficients(:, 1:k), sqrt(latent(1:k))');
