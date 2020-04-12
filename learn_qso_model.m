@@ -73,8 +73,8 @@ for i = 1:num_quasars
   % so we need an indicator here to comfine lya_1pzs
   % below Lyman alpha (do we need to make the indicator
   % has a lower bound at Lyman limit here?)
-  indicator = lya_1pzs(i, :) <= (1 + z_qso);
-  lya_1pzs(i, :) = lya_1pzs(i, :) .* indicator;
+  % indicator = lya_1pzs(i, :) <= (1 + z_qso);
+  % lya_1pzs(i, :) = lya_1pzs(i, :) .* indicator;
 
   % incldue all members in Lyman series to the forest
   for j = 1:num_forest_lines
