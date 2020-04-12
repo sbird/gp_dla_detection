@@ -73,8 +73,8 @@ for i = 1:num_quasars
   % so we need an indicator here to comfine lya_1pzs
   % below Lyman alpha (do we need to make the indicator
   % has a lower bound at Lyman limit here?)
-  indicator = lya_1pzs(i, :) <= (1 + z_qso);
-  lya_1pzs(i, :) = lya_1pzs(i, :) .* indicator;
+  % indicator = lya_1pzs(i, :) <= (1 + z_qso);
+  % lya_1pzs(i, :) = lya_1pzs(i, :) .* indicator;
 
   % incldue all members in Lyman series to the forest
   for j = 1:num_forest_lines
@@ -173,6 +173,7 @@ ind = sum(isnan(rest_fluxes_div_exp1pz),2) < num_rest_pixels-min_num_pixels;
 
 fprintf("Filtering %g quasars\n", length(rest_fluxes_div_exp1pz) - nnz(ind));
 
+z_qsos                      = z_qsos(ind);
 rest_fluxes_div_exp1pz      = rest_fluxes_div_exp1pz(ind, :);
 rest_noise_variances_exp1pz = rest_noise_variances_exp1pz(ind, :);
 lya_1pzs                    = lya_1pzs(ind, :);
@@ -185,17 +186,17 @@ max(find(nancolfrac > 0.9))
 % find empirical mean vector and center data
 mu = nanmean(rest_fluxes_div_exp1pz);
 centered_rest_fluxes = bsxfun(@minus, rest_fluxes_div_exp1pz, mu);
-clear('rest_fluxes', 'rest_fluxes_div_exp1pz');
+clear('rest_fluxes');
 
 % get top-k PCA vectors to initialize M
 [coefficients, ~, latent] = ...
     pca(centered_rest_fluxes, ...
         'numcomponents', k, ...
-        'rows',          'pairwise');
+        'rows',          'complete');
 
 objective_function = @(x) objective(x, centered_rest_fluxes, lya_1pzs, ...
         rest_noise_variances_exp1pz, num_forest_lines, all_transition_wavelengths, ...
-        all_oscillator_strengths);
+        all_oscillator_strengths, z_qsos);
 
 % initialize A to top-k PCA components of non-DLA-containing spectra
 initial_M = bsxfun(@times, coefficients(:, 1:k), sqrt(latent(1:k))');
@@ -212,6 +213,17 @@ initial_x = [initial_M(:);         ...
              initial_log_c_0;      ...
              initial_log_tau_0;    ...
              initial_log_beta];
+
+% saving these variables for debug
+variables_to_save = {'training_release', 'train_ind', 'max_noise_variance', ...
+    'minFunc_options', 'rest_wavelengths', 'mu', ...
+    'initial_M', 'initial_log_omega', 'initial_log_c_0', ...
+    'initial_tau_0', 'initial_beta', 'rest_fluxes_div_exp1pz', 'lya_1pzs'};
+
+save(sprintf('%s/learned_mu_%s',             ...
+     processed_directory(training_release), ...
+     training_set_name), ...
+variables_to_save{:}, '-v7.3');
 
 % maximize likelihood via L-BFGS
 [x, log_likelihood, ~, minFunc_output] = ...
