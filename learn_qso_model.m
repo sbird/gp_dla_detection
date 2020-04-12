@@ -194,8 +194,7 @@ clear('rest_fluxes');
         'rows',          'complete');
 
 objective_function = @(x) objective(x, centered_rest_fluxes, lya_1pzs, ...
-        rest_noise_variances_exp1pz, num_forest_lines, all_transition_wavelengths, ...
-        all_oscillator_strengths);
+        rest_noise_variances_exp1pz);
 
 % initialize A to top-k PCA components of non-DLA-containing spectra
 initial_M = bsxfun(@times, coefficients(:, 1:k), sqrt(latent(1:k))');
