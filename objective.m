@@ -10,8 +10,8 @@
 %   g(x) = ∂f/∂x
 
 function [f, g] = objective(x, centered_rest_fluxes, lya_1pzs, ...
-  rest_noise_variances, num_forest_lines, all_transition_wavelengths, ...
-  all_oscillator_strengths, z_qsos)
+          rest_noise_variances, num_forest_lines, all_transition_wavelengths, ...
+          all_oscillator_strengths, z_qsos)
 
   [num_quasars, num_pixels] = size(centered_rest_fluxes);
 

@@ -186,7 +186,7 @@ max(find(nancolfrac > 0.9))
 % find empirical mean vector and center data
 mu = nanmean(rest_fluxes_div_exp1pz);
 centered_rest_fluxes = bsxfun(@minus, rest_fluxes_div_exp1pz, mu);
-clear('rest_fluxes');
+clear('rest_fluxes', 'rest_fluxes_div_exp1pz');
 
 % get top-k PCA vectors to initialize M
 [coefficients, ~, latent] = ...
