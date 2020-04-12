@@ -167,7 +167,8 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     this_sample_log_likelihoods_dla    = nan(1, num_dla_samples);
 
     % use num_dla_samples to prevent potential parfor issue (we are using offset_samples_qso in the loop)
-    parfor i = 1:num_dla_samples       %variant redshift in quasars 
+    % parfor removed as it doesn't speed up much
+    for i = 1:num_dla_samples       %variant redshift in quasars 
         z_qso = offset_samples_qso(i);
 
         % only use i to allow parfor
@@ -184,23 +185,18 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         this_noise_variance = all_noise_variance{quasar_num};
         this_pixel_mask     =     all_pixel_mask{quasar_num};
 
-        %interpolate observations
-        rframe_len = 1000;
+        %Cut off observations
+        max_pos_lambda = observed_wavelengths(max_lambda, z_qso);
+        min_pos_lambda = observed_wavelengths(min_lambda, z_qso);
+        max_observed_lambda = min(max_pos_lambda, max(this_wavelengths));
 
-        max_observed_lambda = observed_wavelengths(max_lambda, z_qso);
-        max_observed_lambda = min(max_observed_lambda, max(this_wavelengths));
+        min_observed_lambda = max(min_pos_lambda, min(this_wavelengths));
+        lambda_observed = (max_observed_lambda - min_observed_lambda);
 
-        min_observed_lambda = observed_wavelengths(min_lambda, z_qso);
-        min_observed_lambda = max(min_observed_lambda, min(this_wavelengths));
-
-        vq_range = min_observed_lambda:(max_observed_lambda - ...
-            min_observed_lambda)/rframe_len:max_observed_lambda;
-        vq_range = vq_range';
-
-        this_flux           = interp1(this_wavelengths, this_flux, vq_range);
-        this_noise_variance = interp1(this_wavelengths, this_noise_variance, vq_range);
-        
-        this_wavelengths = vq_range;
+        ind = (this_wavelengths > min_observed_lambda) & (this_wavelengths < max_observed_lambda);
+        this_flux = this_flux(ind);
+        this_noise_variance = this_noise_variance(ind);
+        this_wavelengths = this_wavelengths(ind);
 
         % convert to QSO rest frame
         this_rest_wavelengths = emitted_wavelengths(this_wavelengths, z_qso);
@@ -309,10 +305,6 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         
         this_omega2 = this_omega2 .* this_scaling_factor.^2;
 
-        %no noise after ly_alpha peak @ 1215.67 in rest frame
-        ind_w = find(this_rest_wavelengths > lya_wavelength);
-        this_omega2(ind_w) = .001;
-
         % Lyman series absorption effect on the mean-flux
         % apply the lya_absorption after the interpolation because NaN will appear in this_mu
         total_optical_depth = nan(numel(this_wavelengths), num_forest_lines);
@@ -350,7 +342,7 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         % baseline: probability of no DLA model
         this_sample_log_likelihoods_no_dla(1, i) = ...
             log_mvnpdf_low_rank(this_flux, this_mu, this_M, ...
-            this_omega2 + this_noise_variance);
+            this_omega2 + this_noise_variance) + log(lambda_observed/ dlambda);
         
         % duplicated
         % sample_log_posteriors_no_dla(quasar_ind, i) = ...
@@ -409,9 +401,10 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         dla_M      = this_M      .* absorption;
         dla_omega2 = this_omega2 .* absorption.^2;
         
+        % Add a penalty for short spectra: the expected reduced chi^2 of each spectral pixel that would have been observed.
         this_sample_log_likelihoods_dla(1, i) = ...
             log_mvnpdf_low_rank(this_flux, dla_mu, dla_M, ...
-            dla_omega2 + this_noise_variance);
+            dla_omega2 + this_noise_variance) + log(lambda_observed/ dlambda);
         
         % duplicated
         % sample_log_posteriors_dla(quasar_ind, i) = ...
