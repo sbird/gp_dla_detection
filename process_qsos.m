@@ -175,7 +175,7 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
 
     % use num_dla_samples to prevent potential parfor issue (we are using offset_samples_qso in the loop)
     % parfor removed as it doesn't speed up much
-    num_split = 10;
+    % num_split = 10;
     num_inner_dla_samples = num_dla_samples / num_split;
  
     for j = 1:num_split
