@@ -166,6 +166,13 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     this_sample_log_likelihoods_no_dla = nan(1, num_dla_samples);
     this_sample_log_likelihoods_dla    = nan(1, num_dla_samples);
 
+
+    % move these outside the parfor to avoid constantly querying these large arrays
+    this_out_wavelengths    =    all_wavelengths{quasar_num};
+    this_out_flux           =           all_flux{quasar_num};
+    this_out_noise_variance = all_noise_variance{quasar_num};
+    this_out_pixel_mask     =     all_pixel_mask{quasar_num};
+
     % use num_dla_samples to prevent potential parfor issue (we are using offset_samples_qso in the loop)
     % parfor removed as it doesn't speed up much
     num_split = 10;
@@ -178,20 +185,12 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
 
         parfor i = start_ind:end_ind       %variant redshift in quasars 
             z_qso = offset_samples_qso(i);
-
-            % only use i to allow parfor
-            % i = z_list_ind;
-
-            % mask out this to prevent potential parfor issue
-            % if mod(i, 500) == 0
-            %     fprintf('processing quasar %i of %i, true num %i, iteration %i (z_QSO = %0.4f) ...\n', ...
-            %         quasar_ind, length(qso_ind), quasar_num, i, z_qso);
-            % end
-
-            this_wavelengths    =    all_wavelengths{quasar_num};
-            this_flux           =           all_flux{quasar_num};
-            this_noise_variance = all_noise_variance{quasar_num};
-            this_pixel_mask     =     all_pixel_mask{quasar_num};
+            
+            % keep a copy inner the parfor since we are modifying them
+            this_wavelengths    = this_out_wavelengths;
+            this_flux           = this_out_flux;
+            this_noise_variance = this_out_noise_variance;
+            this_pixel_mask     = this_out_pixel_mask;
 
             %Cut off observations
             max_pos_lambda = observed_wavelengths(max_lambda, z_qso);
@@ -202,9 +201,9 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
             lambda_observed = (max_observed_lambda - min_observed_lambda);
 
             ind = (this_wavelengths > min_observed_lambda) & (this_wavelengths < max_observed_lambda);
-            this_flux = this_flux(ind);
+            this_flux           = this_flux(ind);
             this_noise_variance = this_noise_variance(ind);
-            this_wavelengths = this_wavelengths(ind);
+            this_wavelengths    = this_wavelengths(ind);
 
             % convert to QSO rest frame
             this_rest_wavelengths = emitted_wavelengths(this_wavelengths, z_qso);
@@ -213,8 +212,8 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
             ind = (this_rest_wavelengths >= normalization_min_lambda) & ...
                 (this_rest_wavelengths <= normalization_max_lambda);
 
-            this_median = nanmedian(this_flux(ind));
-            this_flux = this_flux / this_median;
+            this_median         = nanmedian(this_flux(ind));
+            this_flux           = this_flux / this_median;
             this_noise_variance = this_noise_variance / this_median .^ 2;
 
             ind = (this_rest_wavelengths >= min_lambda) & ...
