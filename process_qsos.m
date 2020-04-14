@@ -234,8 +234,8 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
 
         for l = 1:num_forest_lines
             this_lyseries_zs(:, l) = ...
-            (this_wavelengths - all_transition_wavelengths(l)) / ...
-            all_transition_wavelengths(l);
+              (this_wavelengths - all_transition_wavelengths(l)) / ...
+              all_transition_wavelengths(l);
         end
 
         % DLA existence prior
@@ -309,11 +309,11 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         for l = 1:num_forest_lines
             % calculate the oscillator strength for this lyman series member
             this_tau_0 = prev_tau_0 * ...
-            all_oscillator_strengths(l)   / lya_oscillator_strength * ...
-            all_transition_wavelengths(l) / lya_wavelength;
+              all_oscillator_strengths(l)   / lya_oscillator_strength * ...
+              all_transition_wavelengths(l) / lya_wavelength;
 
             total_optical_depth(:, l) = ...
-            this_tau_0 .* ( (1 + this_lyseries_zs(:, l)).^prev_beta );
+              this_tau_0 .* ( (1 + this_lyseries_zs(:, l)).^prev_beta );
 
             % indicator function: z absorbers <= z_qso
             % here is different from multi-dla processing script
