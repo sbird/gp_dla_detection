@@ -111,6 +111,9 @@ c_0   = exp(log_c_0);
 tau_0 = exp(log_tau_0);
 beta  = exp(log_beta);
 
+% Handle empty spectra
+all_exceptions = nan(num_quasars, 1);
+
 z_list                   = 1:length(offset_samples_qso);
 %Debug output
 %all_mus = cell(size(z_list));
@@ -265,8 +268,18 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         %fprintf_debug(' ...     p(no DLA | z_QSO)        : %0.3f\n', 1 - this_p_dla);
 
         % interpolate model onto given wavelengths
-        this_mu = mu_interpolator( this_rest_wavelengths);
-        this_M  =  M_interpolator({this_rest_wavelengths, 1:k});
+        try
+           this_mu = mu_interpolator( this_rest_wavelengths);
+           this_M  =  M_interpolator({this_rest_wavelengths, 1:k});
+        catch me
+            if (strcmp(me.identifier, 'MATLAB:griddedInterpolant:NonVecCompVecErrId'))
+                all_exceptions(quasar_ind, 1) = 1;
+                fprintf(' took %0.3fs.\n', toc);
+                continue
+            else
+                rethrow(me)
+            end
+        end
         %Debug output
         %all_mus{z_list_ind} = this_mu;
         %all_Ms{z_list_ind} = this_M;
@@ -486,7 +499,7 @@ variables_to_save = {'training_release', 'training_set_name', ...
     'sample_log_posteriors_no_dla', 'sample_log_posteriors_dla', ...
     'log_posteriors_no_dla', 'log_posteriors_dla', ...
     'model_posteriors', 'p_no_dlas', ...
-    'p_dlas', 'z_map', 'z_true', 'dla_true', 'z_dla_map', 'n_hi_map', 'signal_to_noise', 'all_thing_ids'};
+    'p_dlas', 'z_map', 'z_true', 'dla_true', 'z_dla_map', 'n_hi_map', 'signal_to_noise', 'all_thing_ids', 'all_exceptions'};
 
     % 'sample_log_priors_no_dla', 'sample_log_priors_dla', ...
     % 'sample_log_likelihoods_no_dla', 'sample_log_likelihoods_dla', ...
