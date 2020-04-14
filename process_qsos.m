@@ -173,250 +173,239 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     this_out_noise_variance = all_noise_variance{quasar_num};
     this_out_pixel_mask     =     all_pixel_mask{quasar_num};
 
-    % use num_dla_samples to prevent potential parfor issue (we are using offset_samples_qso in the loop)
-    % parfor removed as it doesn't speed up much
-    % num_split = 10;
-    num_inner_dla_samples = num_dla_samples / num_split;
- 
-    for j = 1:num_split
-        start_ind = (j - 1) * num_inner_dla_samples + 1;
-        end_ind   =  j      * num_inner_dla_samples;
-        fprintf('... iteration %i / %i...\n', j, num_split);
+    parfor i = 1:num_dla_samples       %variant redshift in quasars 
+        z_qso = offset_samples_qso(i);
 
-        parfor i = start_ind:end_ind       %variant redshift in quasars 
-            z_qso = offset_samples_qso(i);
-            
-            % keep a copy inner the parfor since we are modifying them
-            this_wavelengths    = this_out_wavelengths;
-            this_flux           = this_out_flux;
-            this_noise_variance = this_out_noise_variance;
-            this_pixel_mask     = this_out_pixel_mask;
+        % keep a copy inside the parfor since we are modifying them
+        this_wavelengths    = this_out_wavelengths;
+        this_flux           = this_out_flux;
+        this_noise_variance = this_out_noise_variance;
+        this_pixel_mask     = this_out_pixel_mask;
 
-            %Cut off observations
-            max_pos_lambda = observed_wavelengths(max_lambda, z_qso);
-            min_pos_lambda = observed_wavelengths(min_lambda, z_qso);
-            max_observed_lambda = min(max_pos_lambda, max(this_wavelengths));
+        %Cut off observations
+        max_pos_lambda = observed_wavelengths(max_lambda, z_qso);
+        min_pos_lambda = observed_wavelengths(min_lambda, z_qso);
+        max_observed_lambda = min(max_pos_lambda, max(this_wavelengths));
 
-            min_observed_lambda = max(min_pos_lambda, min(this_wavelengths));
-            lambda_observed = (max_observed_lambda - min_observed_lambda);
+        min_observed_lambda = max(min_pos_lambda, min(this_wavelengths));
+        lambda_observed = (max_observed_lambda - min_observed_lambda);
 
-            ind = (this_wavelengths > min_observed_lambda) & (this_wavelengths < max_observed_lambda);
-            this_flux           = this_flux(ind);
-            this_noise_variance = this_noise_variance(ind);
-            this_wavelengths    = this_wavelengths(ind);
+        ind = (this_wavelengths > min_observed_lambda) & (this_wavelengths < max_observed_lambda);
+        this_flux           = this_flux(ind);
+        this_noise_variance = this_noise_variance(ind);
+        this_wavelengths    = this_wavelengths(ind);
 
-            % convert to QSO rest frame
-            this_rest_wavelengths = emitted_wavelengths(this_wavelengths, z_qso);
+        % convert to QSO rest frame
+        this_rest_wavelengths = emitted_wavelengths(this_wavelengths, z_qso);
 
-            %normalizing here
-            ind = (this_rest_wavelengths >= normalization_min_lambda) & ...
-                (this_rest_wavelengths <= normalization_max_lambda);
+        %normalizing here
+        ind = (this_rest_wavelengths >= normalization_min_lambda) & ...
+            (this_rest_wavelengths <= normalization_max_lambda);
 
-            this_median         = nanmedian(this_flux(ind));
-            this_flux           = this_flux / this_median;
-            this_noise_variance = this_noise_variance / this_median .^ 2;
+        this_median         = nanmedian(this_flux(ind));
+        this_flux           = this_flux / this_median;
+        this_noise_variance = this_noise_variance / this_median .^ 2;
 
-            ind = (this_rest_wavelengths >= min_lambda) & ...
-                (this_rest_wavelengths <= max_lambda);
+        ind = (this_rest_wavelengths >= min_lambda) & ...
+            (this_rest_wavelengths <= max_lambda);
 
-            % keep complete copy of equally spaced wavelengths for absorption
-            % computation
-            this_unmasked_wavelengths = this_wavelengths(ind);
+        % keep complete copy of equally spaced wavelengths for absorption
+        % computation
+        this_unmasked_wavelengths = this_wavelengths(ind);
 
-            %ind = ind & (~this_pixel_mask);
+        %ind = ind & (~this_pixel_mask);
 
-            this_wavelengths      =      this_wavelengths(ind);
-            this_rest_wavelengths = this_rest_wavelengths(ind);
-            this_flux             =             this_flux(ind);
-            this_noise_variance   =   this_noise_variance(ind);
-            this_noise_variance(isinf(this_noise_variance)) = mean(this_noise_variance); %rare kludge to fix bad data
-            
-            fluxes{i}           = this_flux;
-            rest_wavelengths{i} = this_rest_wavelengths;
-            
-            this_lya_zs = ...
-                (this_wavelengths - lya_wavelength) / ...
-                lya_wavelength;
-            
-            % To count the effect of Lyman series from higher z,
-            % we compute the absorbers' redshifts for all members of the series
-            this_lyseries_zs = nan(numel(this_wavelengths), num_forest_lines);
+        this_wavelengths      =      this_wavelengths(ind);
+        this_rest_wavelengths = this_rest_wavelengths(ind);
+        this_flux             =             this_flux(ind);
+        this_noise_variance   =   this_noise_variance(ind);
+        this_noise_variance(isinf(this_noise_variance)) = mean(this_noise_variance); %rare kludge to fix bad data
+        
+        fluxes{i}           = this_flux;
+        rest_wavelengths{i} = this_rest_wavelengths;
+        
+        this_lya_zs = ...
+            (this_wavelengths - lya_wavelength) / ...
+            lya_wavelength;
+        
+        % To count the effect of Lyman series from higher z,
+        % we compute the absorbers' redshifts for all members of the series
+        this_lyseries_zs = nan(numel(this_wavelengths), num_forest_lines);
 
-            for l = 1:num_forest_lines
-                this_lyseries_zs(:, l) = ...
-                (this_wavelengths - all_transition_wavelengths(l)) / ...
-                all_transition_wavelengths(l);
-            end
-
-            % DLA existence prior
-            less_ind = (prior.z_qsos < (z_qso + prior_z_qso_increase));
-
-            this_num_dlas    = nnz(prior.dla_ind(less_ind));
-            this_num_quasars = nnz(less_ind);
-            this_p_dla       = this_num_dlas / this_num_quasars;
-            this_p_dlas(i)   = this_p_dla;
-
-            %minimal plausible prior to prevent NaN on low z_qso;
-            if this_num_dlas == 0
-                this_num_dlas = 1;
-                this_num_quasars = length(less_ind);
-            end
-            
-            this_sample_log_priors_dla(1, i) = ...
-                log(                   this_num_dlas) - log(this_num_quasars);
-            this_sample_log_priors_no_dla(1, i) = ...
-                log(this_num_quasars - this_num_dlas) - log(this_num_quasars);
-
-            %sample_log_priors_dla(quasar_ind, z_list_ind) = log(.5);
-            %sample_log_priors_no_dla(quasar_ind, z_list_ind) = log(.5);
-
-            % fprintf_debug('\n');
-            fprintf_debug(' ...     p(   DLA | z_QSO)        : %0.3f\n',     this_p_dla);
-            fprintf_debug(' ...     p(no DLA | z_QSO)        : %0.3f\n', 1 - this_p_dla);
-
-            % interpolate model onto given wavelengths
-            this_mu = mu_interpolator( this_rest_wavelengths);
-            this_M  =  M_interpolator({this_rest_wavelengths, 1:k});
-            %Debug output
-            %all_mus{z_list_ind} = this_mu;
-            %all_Ms{z_list_ind} = this_M;
-
-            this_log_omega = log_omega_interpolator(this_rest_wavelengths);
-            this_omega2 = exp(2 * this_log_omega);
-            
-            % Lyman series absorption effect for the noise variance
-            % note: this noise variance must be trained on the same number of members of Lyman series
-            lya_optical_depth = tau_0 .* (1 + this_lya_zs).^beta;
-
-            % Note: this_wavelengths is within (min_lambda, max_lambda)
-            % so it may beyond lya_wavelength, so need an indicator;
-            % Note: 1 - exp( -0 ) + c_0 = c_0
-            indicator         = this_lya_zs <= z_qso;
-            lya_optical_depth = lya_optical_depth .* indicator;
-
-            for l = 2:num_forest_lines
-                lyman_1pz = all_transition_wavelengths(1) .* (1 + this_lya_zs) ...
-                    ./ all_transition_wavelengths(l);
-
-                % only include the Lyman series with absorber redshifts lower than z_qso
-                indicator = lyman_1pz <= (1 + z_qso);
-                lyman_1pz = lyman_1pz .* indicator;
-
-                tau = tau_0 * all_transition_wavelengths(l) * all_oscillator_strengths(l) ...
-                    / (  all_transition_wavelengths(1) * all_oscillator_strengths(1) );
-
-                lya_optical_depth = lya_optical_depth + tau .* lyman_1pz.^beta;
-            end
-
-            this_scaling_factor = 1 - exp( -lya_optical_depth ) + c_0;
-            
-            this_omega2 = this_omega2 .* this_scaling_factor.^2;
-
-            % Lyman series absorption effect on the mean-flux
-            % apply the lya_absorption after the interpolation because NaN will appear in this_mu
-            total_optical_depth = nan(numel(this_wavelengths), num_forest_lines);
-
-            for l = 1:num_forest_lines
-                % calculate the oscillator strength for this lyman series member
-                this_tau_0 = prev_tau_0 * ...
-                all_oscillator_strengths(l)   / lya_oscillator_strength * ...
-                all_transition_wavelengths(l) / lya_wavelength;
-
-                total_optical_depth(:, l) = ...
-                this_tau_0 .* ( (1 + this_lyseries_zs(:, l)).^prev_beta );
-
-                % indicator function: z absorbers <= z_qso
-                % here is different from multi-dla processing script
-                % I choose to use zero instead or nan to indicate
-                % values outside of the Lyman forest
-                indicator = this_lyseries_zs(:, l) <= z_qso;
-                total_optical_depth(:, l) = total_optical_depth(:, l) .* indicator;
-            end
-
-            % change from nansum to simply sum; shoudn't be different
-            % because we also change indicator from nan to zero,
-            % but if this script is glitchy then inspect this line
-            lya_absorption = exp(- sum(total_optical_depth, 2) );
-
-            this_mu = this_mu .* lya_absorption;
-            this_M  = this_M  .* lya_absorption;
-
-            % re-adjust (K + Ω) to the level of μ .* exp( -optical_depth ) = μ .* a_lya
-            % now the null model likelihood is:
-            % p(y | λ, zqso, v, ω, M_nodla) = N(y; μ .* a_lya, A_lya (K + Ω) A_lya + V)
-            this_omega2 = this_omega2 .* lya_absorption.^2;
-            
-            % baseline: probability of no DLA model
-            this_sample_log_likelihoods_no_dla(1, i) = ...
-                log_mvnpdf_low_rank(this_flux, this_mu, this_M, ...
-                this_omega2 + this_noise_variance) + log(lambda_observed/ dlambda);
-            
-            % duplicated
-            % sample_log_posteriors_no_dla(quasar_ind, i) = ...
-            %     this_sample_log_priors_no_dla(1, i) + this_sample_log_likelihoods_no_dla(1, i);
-
-            fprintf_debug(' ... log p(D | z_QSO, no DLA)     : %0.2f\n', ...
-                this_sample_log_likelihoods_no_dla(1, i));
-
-            % Add
-            if isempty(this_wavelengths)
-                continue;
-            end
-
-            % use a temp variable to avoid the possible parfor issue
-            % should be fine after change size of min_z_dlas to (num_quasar, num_dla_samples)
-            this_min_z_dlas = min_z_dla(this_wavelengths, z_qso);
-            this_max_z_dlas = max_z_dla(this_wavelengths, z_qso);
-
-            % min_z_dlas(quasar_ind, i) = this_min_z_dlas;
-            % max_z_dlas(quasar_ind, i) = this_max_z_dlas;
-
-            sample_z_dlas = ...
-                this_min_z_dlas +  ...
-                (this_max_z_dlas - this_min_z_dlas) * offset_samples;
-
-            used_z_dla(i) = sample_z_dlas(i);
-
-            % ensure enough pixels are on either side for convolving with
-            % instrument profile
-            padded_wavelengths = ...
-                [logspace(log10(min(this_unmasked_wavelengths)) - width * pixel_spacing, ...
-                log10(min(this_unmasked_wavelengths)) - pixel_spacing,         ...
-                width)';                                                       ...
-                this_unmasked_wavelengths;                                              ...
-                logspace(log10(max(this_unmasked_wavelengths)) + pixel_spacing,         ...
-                log10(max(this_unmasked_wavelengths)) + width * pixel_spacing, ...
-                width)'                                                        ...
-                ];
-
-            % to retain only unmasked pixels from computed absorption profile
-            ind = (~this_pixel_mask(ind));
-
-            % compute probabilities under DLA model for each of the sampled
-            % (normalized offset, log(N HI)) pairs
-            % absorption corresponding to this sample
-            absorption = voigt(padded_wavelengths, sample_z_dlas(i), ...
-                nhi_samples(i), num_lines);
-
-            % delta z = v / c = H(z) d / c = 70 (km/s/Mpc) * sqrt(0.3 * (1+z)^3 + 0.7) * (5 Mpc) / (3x10^5 km/s) ~ 0.005 at z=3
-            if add_proximity_zone
-                delta_z = (70 * sqrt(.3 * (1+z_qso)^3 + .7) * 5) / (3 * 10^5);
-            end
-
-
-            dla_mu     = this_mu     .* absorption;
-            dla_M      = this_M      .* absorption;
-            dla_omega2 = this_omega2 .* absorption.^2;
-            
-            % Add a penalty for short spectra: the expected reduced chi^2 of each spectral pixel that would have been observed.
-            this_sample_log_likelihoods_dla(1, i) = ...
-                log_mvnpdf_low_rank(this_flux, dla_mu, dla_M, ...
-                dla_omega2 + this_noise_variance) + log(lambda_observed/ dlambda);
-            
-            % duplicated
-            % sample_log_posteriors_dla(quasar_ind, i) = ...
-            %     this_sample_log_priors_dla(1, i) + this_sample_log_likelihoods_dla(1, i);
+        for l = 1:num_forest_lines
+            this_lyseries_zs(:, l) = ...
+            (this_wavelengths - all_transition_wavelengths(l)) / ...
+            all_transition_wavelengths(l);
         end
+
+        % DLA existence prior
+        less_ind = (prior.z_qsos < (z_qso + prior_z_qso_increase));
+
+        this_num_dlas    = nnz(prior.dla_ind(less_ind));
+        this_num_quasars = nnz(less_ind);
+        this_p_dla       = this_num_dlas / this_num_quasars;
+        this_p_dlas(i)   = this_p_dla;
+
+        %minimal plausible prior to prevent NaN on low z_qso;
+        if this_num_dlas == 0
+            this_num_dlas = 1;
+            this_num_quasars = length(less_ind);
+        end
+        
+        this_sample_log_priors_dla(1, i) = ...
+            log(                   this_num_dlas) - log(this_num_quasars);
+        this_sample_log_priors_no_dla(1, i) = ...
+            log(this_num_quasars - this_num_dlas) - log(this_num_quasars);
+
+        %sample_log_priors_dla(quasar_ind, z_list_ind) = log(.5);
+        %sample_log_priors_no_dla(quasar_ind, z_list_ind) = log(.5);
+
+        % fprintf_debug('\n');
+        fprintf_debug(' ...     p(   DLA | z_QSO)        : %0.3f\n',     this_p_dla);
+        fprintf_debug(' ...     p(no DLA | z_QSO)        : %0.3f\n', 1 - this_p_dla);
+
+        % interpolate model onto given wavelengths
+        this_mu = mu_interpolator( this_rest_wavelengths);
+        this_M  =  M_interpolator({this_rest_wavelengths, 1:k});
+        %Debug output
+        %all_mus{z_list_ind} = this_mu;
+        %all_Ms{z_list_ind} = this_M;
+
+        this_log_omega = log_omega_interpolator(this_rest_wavelengths);
+        this_omega2 = exp(2 * this_log_omega);
+        
+        % Lyman series absorption effect for the noise variance
+        % note: this noise variance must be trained on the same number of members of Lyman series
+        lya_optical_depth = tau_0 .* (1 + this_lya_zs).^beta;
+
+        % Note: this_wavelengths is within (min_lambda, max_lambda)
+        % so it may beyond lya_wavelength, so need an indicator;
+        % Note: 1 - exp( -0 ) + c_0 = c_0
+        indicator         = this_lya_zs <= z_qso;
+        lya_optical_depth = lya_optical_depth .* indicator;
+
+        for l = 2:num_forest_lines
+            lyman_1pz = all_transition_wavelengths(1) .* (1 + this_lya_zs) ...
+                ./ all_transition_wavelengths(l);
+
+            % only include the Lyman series with absorber redshifts lower than z_qso
+            indicator = lyman_1pz <= (1 + z_qso);
+            lyman_1pz = lyman_1pz .* indicator;
+
+            tau = tau_0 * all_transition_wavelengths(l) * all_oscillator_strengths(l) ...
+                / (  all_transition_wavelengths(1) * all_oscillator_strengths(1) );
+
+            lya_optical_depth = lya_optical_depth + tau .* lyman_1pz.^beta;
+        end
+
+        this_scaling_factor = 1 - exp( -lya_optical_depth ) + c_0;
+        
+        this_omega2 = this_omega2 .* this_scaling_factor.^2;
+
+        % Lyman series absorption effect on the mean-flux
+        % apply the lya_absorption after the interpolation because NaN will appear in this_mu
+        total_optical_depth = nan(numel(this_wavelengths), num_forest_lines);
+
+        for l = 1:num_forest_lines
+            % calculate the oscillator strength for this lyman series member
+            this_tau_0 = prev_tau_0 * ...
+            all_oscillator_strengths(l)   / lya_oscillator_strength * ...
+            all_transition_wavelengths(l) / lya_wavelength;
+
+            total_optical_depth(:, l) = ...
+            this_tau_0 .* ( (1 + this_lyseries_zs(:, l)).^prev_beta );
+
+            % indicator function: z absorbers <= z_qso
+            % here is different from multi-dla processing script
+            % I choose to use zero instead or nan to indicate
+            % values outside of the Lyman forest
+            indicator = this_lyseries_zs(:, l) <= z_qso;
+            total_optical_depth(:, l) = total_optical_depth(:, l) .* indicator;
+        end
+
+        % change from nansum to simply sum; shoudn't be different
+        % because we also change indicator from nan to zero,
+        % but if this script is glitchy then inspect this line
+        lya_absorption = exp(- sum(total_optical_depth, 2) );
+
+        this_mu = this_mu .* lya_absorption;
+        this_M  = this_M  .* lya_absorption;
+
+        % re-adjust (K + Ω) to the level of μ .* exp( -optical_depth ) = μ .* a_lya
+        % now the null model likelihood is:
+        % p(y | λ, zqso, v, ω, M_nodla) = N(y; μ .* a_lya, A_lya (K + Ω) A_lya + V)
+        this_omega2 = this_omega2 .* lya_absorption.^2;
+        
+        % baseline: probability of no DLA model
+        this_sample_log_likelihoods_no_dla(1, i) = ...
+            log_mvnpdf_low_rank(this_flux, this_mu, this_M, ...
+            this_omega2 + this_noise_variance) + log(lambda_observed/ dlambda);
+        
+        % duplicated
+        % sample_log_posteriors_no_dla(quasar_ind, i) = ...
+        %     this_sample_log_priors_no_dla(1, i) + this_sample_log_likelihoods_no_dla(1, i);
+
+        fprintf_debug(' ... log p(D | z_QSO, no DLA)     : %0.2f\n', ...
+            this_sample_log_likelihoods_no_dla(1, i));
+
+        % Add
+        if isempty(this_wavelengths)
+            continue;
+        end
+
+        % use a temp variable to avoid the possible parfor issue
+        % should be fine after change size of min_z_dlas to (num_quasar, num_dla_samples)
+        this_min_z_dlas = min_z_dla(this_wavelengths, z_qso);
+        this_max_z_dlas = max_z_dla(this_wavelengths, z_qso);
+
+        % min_z_dlas(quasar_ind, i) = this_min_z_dlas;
+        % max_z_dlas(quasar_ind, i) = this_max_z_dlas;
+
+        sample_z_dlas = ...
+            this_min_z_dlas +  ...
+            (this_max_z_dlas - this_min_z_dlas) * offset_samples;
+
+        used_z_dla(i) = sample_z_dlas(i);
+
+        % ensure enough pixels are on either side for convolving with
+        % instrument profile
+        padded_wavelengths = ...
+            [logspace(log10(min(this_unmasked_wavelengths)) - width * pixel_spacing, ...
+            log10(min(this_unmasked_wavelengths)) - pixel_spacing,         ...
+            width)';                                                       ...
+            this_unmasked_wavelengths;                                              ...
+            logspace(log10(max(this_unmasked_wavelengths)) + pixel_spacing,         ...
+            log10(max(this_unmasked_wavelengths)) + width * pixel_spacing, ...
+            width)'                                                        ...
+            ];
+
+        % to retain only unmasked pixels from computed absorption profile
+        ind = (~this_pixel_mask(ind));
+
+        % compute probabilities under DLA model for each of the sampled
+        % (normalized offset, log(N HI)) pairs
+        % absorption corresponding to this sample
+        absorption = voigt(padded_wavelengths, sample_z_dlas(i), ...
+            nhi_samples(i), num_lines);
+
+        % delta z = v / c = H(z) d / c = 70 (km/s/Mpc) * sqrt(0.3 * (1+z)^3 + 0.7) * (5 Mpc) / (3x10^5 km/s) ~ 0.005 at z=3
+        if add_proximity_zone
+            delta_z = (70 * sqrt(.3 * (1+z_qso)^3 + .7) * 5) / (3 * 10^5);
+        end
+
+
+        dla_mu     = this_mu     .* absorption;
+        dla_M      = this_M      .* absorption;
+        dla_omega2 = this_omega2 .* absorption.^2;
+        
+        % Add a penalty for short spectra: the expected reduced chi^2 of each spectral pixel that would have been observed.
+        this_sample_log_likelihoods_dla(1, i) = ...
+            log_mvnpdf_low_rank(this_flux, dla_mu, dla_M, ...
+            dla_omega2 + this_noise_variance) + log(lambda_observed/ dlambda);
+        
+        % duplicated
+        % sample_log_posteriors_dla(quasar_ind, i) = ...
+        %     this_sample_log_priors_dla(1, i) + this_sample_log_likelihoods_dla(1, i);
     end
 
     DLA_cut = 20.3;
