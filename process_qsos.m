@@ -261,8 +261,8 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         %sample_log_priors_no_dla(quasar_ind, z_list_ind) = log(.5);
 
         % fprintf_debug('\n');
-        fprintf_debug(' ...     p(   DLA | z_QSO)        : %0.3f\n',     this_p_dla);
-        fprintf_debug(' ...     p(no DLA | z_QSO)        : %0.3f\n', 1 - this_p_dla);
+        %fprintf_debug(' ...     p(   DLA | z_QSO)        : %0.3f\n',     this_p_dla);
+        %fprintf_debug(' ...     p(no DLA | z_QSO)        : %0.3f\n', 1 - this_p_dla);
 
         % interpolate model onto given wavelengths
         this_mu = mu_interpolator( this_rest_wavelengths);
@@ -345,8 +345,8 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         % sample_log_posteriors_no_dla(quasar_ind, i) = ...
         %     this_sample_log_priors_no_dla(1, i) + this_sample_log_likelihoods_no_dla(1, i);
 
-        fprintf_debug(' ... log p(D | z_QSO, no DLA)     : %0.2f\n', ...
-            this_sample_log_likelihoods_no_dla(1, i));
+        %fprintf_debug(' ... log p(D | z_QSO, no DLA)     : %0.2f\n', ...
+        %    this_sample_log_likelihoods_no_dla(1, i));
 
         % Add
         if isempty(this_wavelengths)
@@ -455,8 +455,8 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
 
     %fprintf_debug(' ... log p(D | z_QSO,    DLA)     : %0.2f\n', ...
     %    log_likelihoods_dla(quasar_ind));
-    fprintf_debug(' ... log p(DLA | D, z_QSO)        : %0.2f\n', ...
-        log_posteriors_dla(quasar_ind));
+    %fprintf_debug(' ... log p(DLA | D, z_QSO)        : %0.2f\n', ...
+    %    log_posteriors_dla(quasar_ind));
 
     fprintf(' took %0.3fs.\n', toc);
     if mod(quasar_ind, 50) == 0
