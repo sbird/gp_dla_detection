@@ -176,21 +176,12 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     this_out_noise_variance = all_noise_variance{quasar_num};
     this_out_pixel_mask     =     all_pixel_mask{quasar_num};
 
-    % Test: see if error appear; it means this spec is empty
-    try
-        this_mu = mu_interpolator( this_out_wavelengths );
-    catch me
-        if (strcmp(me.identifier, 'MATLAB:griddedInterpolant:NonVecCompVecErrId'))
-            all_exceptions(quasar_ind, 1) = 1;
-            fprintf(' took %0.3fs.\n', toc);      
-        continue
-
-        else
-            rethrow(me)
-        end
+    % Test: see if this spec is empty
+    if all(size(this_out_wavelengths) == [0 0])
+        all_exceptions(quasar_ind, 1) = 1;
+        continue;
     end
-    clear('this_mu');
-
+    
     parfor i = 1:num_dla_samples       %variant redshift in quasars 
         z_qso = offset_samples_qso(i);
 
