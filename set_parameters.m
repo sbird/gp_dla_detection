@@ -23,7 +23,7 @@ emitted_wavelengths = ...
 observed_wavelengths = ...
     @(emitted_wavelengths,  z) ( emitted_wavelengths * (1 + z));
 
-% file loading parameters
+% file loading parameters: this is no longer used.
 loading_min_lambda = 700;                   % range of rest wavelengths to load  Å
 loading_max_lambda = 2400;                  % This maximum is set so we include CIV.
 % The maximum allowed is set so that even if the peak is redshifted off the end, the
@@ -40,7 +40,7 @@ normalization_max_lambda = 1390;              %   for flux normalization
 
 % null model parameters
 min_lambda         =  910;                    % range of rest wavelengths to       Å
-max_lambda         = 1600;                    %   model
+max_lambda         = 1600;                    % model
 dlambda            = 0.25;                    % separation of wavelength grid      Å
 k                  = 20;                      % rank of non-diagonal contribution
 max_noise_variance = 1^2;                     % maximum pixel noise allowed during model training
