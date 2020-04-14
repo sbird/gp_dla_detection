@@ -127,6 +127,9 @@ catch ME
 end
 q_ind_start = quasar_ind;
 
+% catch the exceptions
+all_exceptions = false(num_quasars, 1);
+
 for quasar_ind = q_ind_start:num_quasars %quasar list
     tic;
     quasar_num = qso_ind(quasar_ind);
@@ -172,6 +175,21 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     this_out_flux           =           all_flux{quasar_num};
     this_out_noise_variance = all_noise_variance{quasar_num};
     this_out_pixel_mask     =     all_pixel_mask{quasar_num};
+
+    % Test: see if error appear; it means this spec is empty
+    try
+        this_mu = mu_interpolator( this_out_wavelengths );
+    catch me
+        if (strcmp(me.identifier, 'MATLAB:griddedInterpolant:NonVecCompVecErrId'))
+            all_exceptions(quasar_ind, 1) = 1;
+            fprintf(' took %0.3fs.\n', toc);      
+        continue
+
+        else
+            rethrow(me)
+        end
+    end
+    clear('this_mu');
 
     parfor i = 1:num_dla_samples       %variant redshift in quasars 
         z_qso = offset_samples_qso(i);
