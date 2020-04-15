@@ -127,6 +127,9 @@ catch ME
 end
 q_ind_start = quasar_ind;
 
+% catch the exceptions
+all_exceptions = false(num_quasars, 1);
+
 for quasar_ind = q_ind_start:num_quasars %quasar list
     tic;
     quasar_num = qso_ind(quasar_ind);
@@ -155,7 +158,7 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     this_pixel_signal_to_noise  = sqrt(this_noise_variance) ./ abs(this_flux);
 
     % this is before pixel masking; nanmean to avoid possible NaN values
-    signal_to_noise(quasar_num) = nanmean(this_pixel_signal_to_noise);
+    signal_to_noise(quasar_ind) = nanmean(this_pixel_signal_to_noise);
 
     % this is saved for the MAP esitmate of z_QSO
     used_z_dla                         = nan(num_dla_samples, 1);
@@ -173,6 +176,13 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     this_out_noise_variance = all_noise_variance{quasar_num};
     this_out_pixel_mask     =     all_pixel_mask{quasar_num};
 
+    % Test: see if this spec is empty; this error handling line be outside parfor
+    % would avoid running lots of empty spec in parallel workers
+    if all(size(this_out_wavelengths) == [0 0])
+        all_exceptions(quasar_ind, 1) = 1;
+        continue;
+    end
+    
     parfor i = 1:num_dla_samples       %variant redshift in quasars 
         z_qso = offset_samples_qso(i);
 
@@ -459,10 +469,10 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     %    log_posteriors_dla(quasar_ind));
 
     fprintf(' took %0.3fs.\n', toc);
-    if mod(quasar_ind, 50) == 0
-        save(['./checkpointing/curDLA_', optTagFull, '.mat'], 'log_posteriors_dla_sub', 'log_posteriors_dla_sup', 'log_posteriors_dla', 'log_posteriors_no_dla', 'z_true', 'dla_true', 'quasar_ind', 'quasar_num',...
-            'sample_log_likelihoods_dla', 'sample_log_likelihoods_no_dla', 'sample_z_dlas', 'nhi_samples', 'offset_samples_qso', 'offset_samples', 'z_map', 'signal_to_noise', 'z_dla_map', 'n_hi_map');
-    end
+%    if mod(quasar_ind, 50) == 0
+%        save(['./checkpointing/curDLA_', optTagFull, '.mat'], 'log_posteriors_dla_sub', 'log_posteriors_dla_sup', 'log_posteriors_dla', 'log_posteriors_no_dla', 'z_true', 'dla_true', 'quasar_ind', 'quasar_num',...
+%            'sample_log_likelihoods_dla', 'sample_log_likelihoods_no_dla', 'sample_z_dlas', 'nhi_samples', 'offset_samples_qso', 'offset_samples', 'z_map', 'signal_to_noise', 'z_dla_map', 'n_hi_map');
+%    end
 end
 
 
@@ -491,8 +501,9 @@ variables_to_save = {'training_release', 'training_set_name', ...
     % 'sample_log_priors_no_dla', 'sample_log_priors_dla', ...
     % 'sample_log_likelihoods_no_dla', 'sample_log_likelihoods_dla', ...
 
-filename = sprintf('%s/processed_qsos_%s-%s', ...
+filename = sprintf('%s/processed_qsos_%s-%s_%d-%d', ...
     processed_directory(release), ...
-    test_set_name, optTag);
+    test_set_name, optTag, ...
+    qso_ind(1), qso_ind(1) + numel(qso_ind));
 
 save(filename, variables_to_save{:}, '-v7.3');
