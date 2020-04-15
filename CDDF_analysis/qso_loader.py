@@ -1202,6 +1202,125 @@ class QSOLoader(object):
 
         return predictions_DLAs
 
+class QSOLoaderZ(QSOLoader):
+    '''
+    A specific QSOLoader for Z estimation
+    '''
+    def __init__(self, preloaded_file="preloaded_qsos.mat", catalogue_file="catalog.mat", 
+            learned_file="learned_qso_model_dr9q_minus_concordance.mat", processed_file="processed_qsos_dr12q.mat",
+            dla_concordance="dla_catalog", los_concordance="los_catalog", sample_file="dla_samples.mat",
+            occams_razor=False):
+        self.preloaded_file = h5py.File(preloaded_file, 'r')
+        self.catalogue_file = h5py.File(catalogue_file, 'r')
+        self.learned_file   = h5py.File(learned_file,   'r')
+        self.processed_file = h5py.File(processed_file, 'r')
+
+        self.occams_razor = occams_razor
+
+        # test_set prior inds : organise arrays into the same order using selected test_inds
+        self.test_ind = self.processed_file['test_ind'][0, :].astype(np.bool) #size: (num_qsos, )
+        self.test_real_index = np.nonzero( self.test_ind )[0]        
+
+        # load processed data
+        self.model_posteriors = self.processed_file['model_posteriors'][()].T
+
+        self.p_dlas           = self.processed_file['p_dlas'][0, :]
+        self.p_no_dlas        = self.processed_file['p_no_dlas'][0, :]
+        
+        # z code specific vars
+        self.z_map     = self.processed_file['z_map'][0, :]
+        self.z_true    = self.processed_file['z_true'][0, :]
+        self.dla_true  = self.processed_file['dla_true'][0, :]
+        self.z_dla_map = self.processed_file['z_dla_map'][0, :]
+        self.n_hi_map  = self.processed_file['n_hi_map'][0, :]
+        self.snrs      = self.processed_file['signal_to_noise'][0, :]
+
+        # store thing_ids based on test_set prior inds
+        self.thing_ids = self.catalogue_file['thing_ids'][0, :].astype(np.int)
+        self.thing_ids = self.thing_ids[self.test_ind]
+
+        # plates, mjds, fiber_ids
+        self.plates    = self.catalogue_file['plates'][0, :].astype(np.int)
+        self.mjds      = self.catalogue_file['mjds'][0, :].astype(np.int)
+        self.fiber_ids = self.catalogue_file['fiber_ids'][0, :].astype(np.int)
+
+        self.plates    = self.plates[self.test_ind]
+        self.mjds      = self.mjds[self.test_ind]
+        self.fiber_ids = self.fiber_ids[self.test_ind]
+
+        # store small arrays
+        self.z_qsos     = self.catalogue_file['z_qsos'][0, :]
+        self.snrs_cat   = self.catalogue_file['snrs'][0, :]
+
+        self.z_qsos = self.z_qsos[self.test_ind]
+        self.snrs_cat   = self.snrs_cat[self.test_ind]
+
+        # [Occams Razor] Update model posteriors with an additional occam's razor
+        # updating: 1) model_posteriors, p_dlas, p_no_dlas
+        if occams_razor != False:
+            self.model_posteriors = self._occams_model_posteriors(self.model_posteriors, self.occams_razor)
+            self.p_dlas    = self.model_posteriors[:, 1:].sum(axis=1)
+            self.p_no_dlas = self.model_posteriors[:, :1].sum(axis=1)
+
+        # build a MAP number of DLAs array
+        # construct a reference array of model_posteriors in Roman's catalogue for computing ROC curve
+        multi_p_dlas    = self.model_posteriors # shape : (num_qsos, 2 + num_dlas)
+
+        dla_map_model_index = np.argmax( multi_p_dlas, axis=1 )
+        multi_p_dlas = multi_p_dlas[ np.arange(multi_p_dlas.shape[0]), dla_map_model_index ]
+
+        # remove all NaN slices from our sample
+        nan_inds = np.isnan( multi_p_dlas )
+
+        self.test_ind[self.test_ind == True] = ~nan_inds
+
+        multi_p_dlas          = multi_p_dlas[~nan_inds]
+        dla_map_model_index   = dla_map_model_index[~nan_inds]
+        self.test_real_index  = self.test_real_index[~nan_inds]
+        self.model_posteriors = self.model_posteriors[~nan_inds, :]
+        self.p_dlas           = self.p_dlas[~nan_inds]
+        self.p_no_dlas        = self.p_no_dlas[~nan_inds]
+        self.thing_ids        = self.thing_ids[~nan_inds]
+        self.plates           = self.plates[~nan_inds]
+        self.mjds             = self.mjds[~nan_inds]
+        self.fiber_ids        = self.fiber_ids[~nan_inds]
+        self.z_qsos           = self.z_qsos[~nan_inds]
+        self.snrs_cat         = self.snrs_cat[~nan_inds]
+        self.snrs             = self.snrs[~nan_inds]
+
+        self.z_map     = self.z_map[~nan_inds]
+        self.z_true    = self.z_map[~nan_inds]
+        self.dla_true  = self.z_map[~nan_inds]
+        self.z_dla_map = self.z_map[~nan_inds]
+        self.n_hi_map  = self.z_map[~nan_inds]
+        self.snrs      = self.z_map[~nan_inds]
+
+        self.nan_inds = nan_inds
+        assert np.any( np.isnan( multi_p_dlas )) == False
+
+        self.multi_p_dlas        = multi_p_dlas
+        self.dla_map_model_index = dla_map_model_index
+
+        # store learned GP models
+        self.GP = GPLoader(
+            self.learned_file['rest_wavelengths'][:, 0],
+            self.learned_file['mu'][:, 0],
+            self.learned_file['M'][()].T,
+            self.learned_file['log_tau_0'][0, 0],
+            self.learned_file['log_beta'][0, 0],
+            self.learned_file['log_c_0'][0, 0],
+            self.learned_file['log_omega'][:, 0]
+        )
+
+        # load dla_catalog
+        self.load_dla_concordance(dla_concordance, los_concordance)        
+
+        # make sure everything sums to unity
+        assert np.all( 
+            (self.model_posteriors.sum(axis=1) < 1.2) * 
+            (self.model_posteriors.sum(axis=1) > 0.8) )
+
+
 
 class QSOLoaderMultiDLA(QSOLoader):
     '''
