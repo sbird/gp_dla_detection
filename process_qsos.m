@@ -158,7 +158,7 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     this_pixel_signal_to_noise  = sqrt(this_noise_variance) ./ abs(this_flux);
 
     % this is before pixel masking; nanmean to avoid possible NaN values
-    signal_to_noise(quasar_num) = nanmean(this_pixel_signal_to_noise);
+    signal_to_noise(quasar_ind) = nanmean(this_pixel_signal_to_noise);
 
     % this is saved for the MAP esitmate of z_QSO
     used_z_dla                         = nan(num_dla_samples, 1);
@@ -176,7 +176,8 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     this_out_noise_variance = all_noise_variance{quasar_num};
     this_out_pixel_mask     =     all_pixel_mask{quasar_num};
 
-    % Test: see if this spec is empty
+    % Test: see if this spec is empty; this error handling line be outside parfor
+    % would avoid running lots of empty spec in parallel workers
     if all(size(this_out_wavelengths) == [0 0])
         all_exceptions(quasar_ind, 1) = 1;
         continue;
