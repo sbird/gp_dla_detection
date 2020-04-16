@@ -1219,6 +1219,7 @@ class QSOLoaderZ(QSOLoader):
         self.catalogue_file = h5py.File(catalogue_file, 'r')
         self.learned_file   = h5py.File(learned_file,   'r')
         self.processed_file = h5py.File(processed_file, 'r')
+        self.sample_file    = h5py.File(sample_file, 'r')
 
         self.occams_razor = occams_razor
 
@@ -1248,6 +1249,10 @@ class QSOLoaderZ(QSOLoader):
         self.z_dla_map = self.processed_file['z_dla_map'][0, :]
         self.n_hi_map  = self.processed_file['n_hi_map'][0, :]
         self.snrs      = self.processed_file['signal_to_noise'][0, :]
+        self.sample_log_posteriors_no_dla = self.processed_file[
+            'sample_log_posteriors_no_dla'][()].T
+        self.sample_log_posteriors_dla    = self.processed_file[
+            'sample_log_posteriors_dla'][()].T
 
         # store thing_ids based on test_set prior inds
         self.thing_ids = self.catalogue_file['thing_ids'][0, :].astype(np.int)
@@ -1332,6 +1337,50 @@ class QSOLoaderZ(QSOLoader):
         assert np.all( 
             (self.model_posteriors.sum(axis=1) < 1.2) * 
             (self.model_posteriors.sum(axis=1) > 0.8) )
+
+        # loading DLA samples for plotting z_true comparing to marginalised likelihoods
+        self.offset_samples_qso = self.sample_file['offset_samples_qso'][:, 0]
+        self.log_nhi_samples    = self.sample_file['log_nhi_samples'][:, 0]
+        self.offset_samples     = self.sample_file['offset_samples'][:, 0]
+
+    @staticmethod
+    def find_large_delta_z(z_map, z_true, delta_z):
+        '''
+        return the ind with large delta_z between MAP estimate and z_true
+        '''
+        ind = np.abs( z_map - z_true ) > delta_z
+        return ind
+
+    def plot_z_map(self, zmin=2.15, zmax=6, delta_z=1):
+        '''
+        plot the z_map as x-axis and z_true as y-axis
+        '''
+        plt.scatter(self.z_map, self.z_true)
+
+        ind = self.find_large_delta_z(self.z_map, self.z_true, delta_z)
+        
+        plt.scatter(self.z_map[ind], self.z_true[ind],
+            color="red",
+            label="z_delta > {:.2g}".format(delta_z))
+        print("miss z estimate : {:.2g}%".format(ind.sum() / ind.shape[0] * 100))
+        print("index with larger than delta_z:", np.where(~self.nan_inds)[0][ind] )
+
+        plt.plot(np.linspace(zmin, zmax, 100), np.linspace(zmin, zmax, 100),
+            color='C1', ls='--')
+        plt.xlim(zmin, zmax)
+        plt.ylim(zmin, zmax)
+        
+        plt.xlabel(r"$z_\mathrm{MAP}$")
+        plt.ylabel(r"$z_\mathrm{true}$")
+
+        return ind
+
+    def plot_z_sample_posteriors(self, dla_samples=False):
+        '''
+        plot the z_samples versus sample posteriors
+        '''
+        raise NotImplementedError
+
 
     @staticmethod
     def normalisation(rest_wavelengths, flux, noise_variance, 
