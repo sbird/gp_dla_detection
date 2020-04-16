@@ -1206,27 +1206,41 @@ class QSOLoaderZ(QSOLoader):
     '''
     A specific QSOLoader for Z estimation
     '''
+    # include the normaliser since it is not in the processed file
+    normalization_min_lambda = 1325                 # range of rest wavelengths to use   Å
+    normalization_max_lambda = 1390                 #   for flux normalization
+
+
     def __init__(self, preloaded_file="preloaded_qsos.mat", catalogue_file="catalog.mat", 
             learned_file="learned_qso_model_dr9q_minus_concordance.mat", processed_file="processed_qsos_dr12q.mat",
             dla_concordance="dla_catalog", los_concordance="los_catalog", sample_file="dla_samples.mat",
-            occams_razor=False):
-        self.preloaded_file = h5py.File(preloaded_file, 'r')
+            occams_razor=False, small_file = True):
+        # self.preloaded_file = h5py.File(preloaded_file, 'r')
         self.catalogue_file = h5py.File(catalogue_file, 'r')
         self.learned_file   = h5py.File(learned_file,   'r')
         self.processed_file = h5py.File(processed_file, 'r')
 
         self.occams_razor = occams_razor
 
-        # test_set prior inds : organise arrays into the same order using selected test_inds
-        self.test_ind = self.processed_file['test_ind'][0, :].astype(np.bool) #size: (num_qsos, )
-        self.test_real_index = np.nonzero( self.test_ind )[0]        
-
         # load processed data
         self.model_posteriors = self.processed_file['model_posteriors'][()].T
 
         self.p_dlas           = self.processed_file['p_dlas'][0, :]
         self.p_no_dlas        = self.processed_file['p_no_dlas'][0, :]
-        
+
+        # test_set prior inds : organise arrays into the same order using selected test_inds
+        self.test_ind = self.processed_file['test_ind'][0, :].astype(np.bool) #size: (num_qsos, )
+        self.test_real_index = np.nonzero( self.test_ind )[0]
+
+        if small_file:
+            # note the assumption here is we have samples from 1 ~ num_quasars
+            num_quasars = len(self.p_dlas)
+            self.test_real_index = self.test_real_index[:num_quasars]
+
+            # filter out test_ind which not in the range of testing
+            ind = np.arange(len(self.test_ind)) > max(self.test_real_index)
+            self.test_ind[ind] = False
+
         # z code specific vars
         self.z_map     = self.processed_file['z_map'][0, :]
         self.z_true    = self.processed_file['z_true'][0, :]
@@ -1289,11 +1303,10 @@ class QSOLoaderZ(QSOLoader):
         self.snrs             = self.snrs[~nan_inds]
 
         self.z_map     = self.z_map[~nan_inds]
-        self.z_true    = self.z_map[~nan_inds]
-        self.dla_true  = self.z_map[~nan_inds]
-        self.z_dla_map = self.z_map[~nan_inds]
-        self.n_hi_map  = self.z_map[~nan_inds]
-        self.snrs      = self.z_map[~nan_inds]
+        self.z_true    = self.z_true[~nan_inds]
+        self.dla_true  = self.dla_true[~nan_inds]
+        self.z_dla_map = self.z_dla_map[~nan_inds]
+        self.n_hi_map  = self.n_hi_map[~nan_inds]
 
         self.nan_inds = nan_inds
         assert np.any( np.isnan( multi_p_dlas )) == False
@@ -1320,6 +1333,35 @@ class QSOLoaderZ(QSOLoader):
             (self.model_posteriors.sum(axis=1) < 1.2) * 
             (self.model_posteriors.sum(axis=1) > 0.8) )
 
+    @staticmethod
+    def normalisation(rest_wavelengths, flux, noise_variance, 
+            normalization_min_lambda, normalization_max_lambda):
+        '''
+        Since the normalisation is no longer done in the preload_qso.m,
+        we need to make another function to do normalisation
+
+        Parameters:
+        ----
+        rest_wavelengths (np.ndarray)
+        flux             (np.ndarray)
+        noise_variance   (np.ndarray)
+        normalization_min_lambda (float)
+        normalization_max_lambda (float)
+
+        Returns:
+        ----
+        flux (np.ndarray)
+        noise_variance (np.ndarray)
+        '''
+        #normalizing here
+        ind = ( (rest_wavelengths >= normalization_min_lambda) & 
+            (rest_wavelengths <= normalization_max_lambda))
+
+        this_median    = np.nanmedian(flux(ind))
+        flux           = flux / this_median
+        noise_variance = noise_variance / this_median ** 2
+
+        return (flux, noise_variance)
 
 
 class QSOLoaderMultiDLA(QSOLoader):
