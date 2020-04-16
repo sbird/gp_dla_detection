@@ -8,6 +8,13 @@ lyb_wavelength = 1025.7223
 lyman_limit    = 911.7633
 speed_of_light = 299792458
 
+# metal lines
+ovi_wavelength  = 1033.82
+oi_wavelength   = 1305.53
+siiv_wavelength = 1397.61
+civ_wavelength  = 1549.48
+
+
 # oscillator strengths
 lya_oscillator_strength = 0.416400
 lyb_oscillator_strength = 0.079120

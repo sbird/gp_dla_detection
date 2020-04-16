@@ -1215,7 +1215,7 @@ class QSOLoaderZ(QSOLoader):
             learned_file="learned_qso_model_dr9q_minus_concordance.mat", processed_file="processed_qsos_dr12q.mat",
             dla_concordance="dla_catalog", los_concordance="los_catalog", sample_file="dla_samples.mat",
             occams_razor=False, small_file = True):
-        # self.preloaded_file = h5py.File(preloaded_file, 'r')
+        self.preloaded_file = h5py.File(preloaded_file, 'r')
         self.catalogue_file = h5py.File(catalogue_file, 'r')
         self.learned_file   = h5py.File(learned_file,   'r')
         self.processed_file = h5py.File(processed_file, 'r')
@@ -1249,10 +1249,12 @@ class QSOLoaderZ(QSOLoader):
         self.z_dla_map = self.processed_file['z_dla_map'][0, :]
         self.n_hi_map  = self.processed_file['n_hi_map'][0, :]
         self.snrs      = self.processed_file['signal_to_noise'][0, :]
+        
+        # memory free loading; using disk I/O to load sample posteriors
         self.sample_log_posteriors_no_dla = self.processed_file[
-            'sample_log_posteriors_no_dla'][()].T
+            'sample_log_posteriors_no_dla']
         self.sample_log_posteriors_dla    = self.processed_file[
-            'sample_log_posteriors_dla'][()].T
+            'sample_log_posteriors_dla']
 
         # store thing_ids based on test_set prior inds
         self.thing_ids = self.catalogue_file['thing_ids'][0, :].astype(np.int)
@@ -1375,12 +1377,116 @@ class QSOLoaderZ(QSOLoader):
 
         return ind
 
-    def plot_z_sample_posteriors(self, dla_samples=False):
+    def plot_z_sample_posteriors(self, nspec, dla_samples=False):
         '''
         plot the z_samples versus sample posteriors
         '''
-        raise NotImplementedError
+        # loading from files to save memory
+        this_sample_log_posteriors_no_dla = self.sample_log_posteriors_no_dla[:, nspec]
+        this_sample_log_posteriors_dla    = self.sample_log_posteriors_dla[:, nspec]
 
+        plt.scatter(self.offset_samples_qso,
+            this_sample_log_posteriors_no_dla,
+            color="black", label="P(¬DLA | D)")
+        
+        if dla_samples:
+            plt.scatter(self.offset_samples_qso,
+                this_sample_log_posteriors_dla,
+                color="C1", label="P(DLA | D)", alpha=0.5)
+
+        # plot verticle lines corresponding to metal lines miss fitted lya
+        z_ovi  = ovi_wavelength  * (1 + self.z_true[nspec]) / lya_wavelength - 1
+        z_lyb  = lyb_wavelength  * (1 + self.z_true[nspec]) / lya_wavelength - 1
+        z_oi   = oi_wavelength   * (1 + self.z_true[nspec]) / lya_wavelength - 1
+        z_siiv = siiv_wavelength * (1 + self.z_true[nspec]) / lya_wavelength - 1
+        z_civ  = civ_wavelength  * (1 + self.z_true[nspec]) / lya_wavelength - 1
+
+        non_inf_ind = ~np.isinf( this_sample_log_posteriors_no_dla )
+
+        ymin = this_sample_log_posteriors_no_dla[non_inf_ind].min()
+        ymax = this_sample_log_posteriors_no_dla[non_inf_ind].max()
+
+        plt.vlines([self.z_true[nspec], z_ovi, z_lyb, z_oi, z_siiv, z_civ],
+            ymin, ymax, color="red", ls='--')
+
+        plt.text(z_ovi,  ymax, r"Z_OVI",  rotation=90, verticalalignment="bottom")
+        plt.text(z_lyb,  ymax, r"Z_OI",   rotation=90, verticalalignment="bottom")
+        plt.text(z_oi,   ymax, r"Z_OI",   rotation=90, verticalalignment="bottom")
+        plt.text(z_siiv, ymax, r"Z_SIIV", rotation=90, verticalalignment="bottom")
+        plt.text(z_civ,  ymax, r"Z_CIV",  rotation=90, verticalalignment="bottom")
+
+        plt.text(self.z_true[nspec],  ymax, r"Z_QSO",  rotation=90, verticalalignment="bottom")
+
+        plt.xlabel("z samples")
+        plt.ylabel("posteriors")
+        plt.legend()
+
+    def plot_this_mu(self, nspec, suppressed=True, num_voigt_lines=3, num_forest_lines=6, 
+            label="", new_fig=True, color="red", z_sample=None):
+        '''
+        Plot the spectrum with the dla model
+
+        Parameters:
+        ----
+        nspec (int) : index of the spectrum in the catalogue
+        suppressed (bool) : apply Lyman series suppression to the mean-flux or not
+        num_voigt_lines (int, min=1, max=31) : how many members of Lyman series in the DLA Voigt profile
+        number_forest_lines (int) : how many members of Lymans series considered in the froest
+
+        z_sample (float) : predicted z_QSO; if None, assumed using z_map
+
+        Returns:
+        ----
+        rest_wavelengths : rest wavelengths for the DLA model
+        this_mu : the DLA model
+        '''
+        # spec id
+        plate, mjd, fiber_id = (self.plates[nspec], self.mjds[nspec], self.fiber_ids[nspec])
+
+        # for obs data
+        this_wavelengths    = self.find_this_wavelengths(nspec)
+        this_noise_variance = self.find_this_noise_variance(nspec)
+        this_flux           = self.find_this_flux(nspec)
+
+        # for Z code, the normalisation is not included in the preload
+        this_flux, this_noise_variance = self.normalisation(
+            this_wavelengths, this_flux, this_noise_variance,
+            self.normalization_min_lambda, self.normalization_max_lambda)
+
+        # make the choice of z_qso flexible to allow visual inspecting the fitted spectra
+        if z_sample:
+            z_qso = z_sample
+        else:
+            z_qso = self.z_map[nspec]
+
+        this_rest_wavelengths = emitted_wavelengths(this_wavelengths, z_qso)
+
+        # for building GP model
+        rest_wavelengths = self.GP.rest_wavelengths
+        this_mu          = self.GP.mu
+
+        # count the effective optical depth from members in Lyman series
+        scale_factor = self.total_scale_factor(
+            self.GP.tau_0_kim, self.GP.beta_kim, self.z_qsos[nspec], 
+            self.GP.rest_wavelengths, num_lines=num_forest_lines)
+        
+        if suppressed:
+            this_mu = this_mu * scale_factor
+
+        # plt.figure(figsize=(16, 5))
+        if new_fig:
+            make_fig()
+            plt.plot(this_rest_wavelengths, this_flux, label="observed flux; spec-{}-{}-{}".format(plate, mjd, fiber_id), color="C0")
+
+        plt.plot(rest_wavelengths, this_mu, 
+            label=label + r"$\mathcal{M}$"+r" DLA({n})".format(n=0) + ": {:.3g}".format(self.p_no_dlas[nspec]), 
+            color=color)
+
+        plt.xlabel(r"rest-wavelengths $\lambda_{\mathrm{rest}}$ $\AA$")
+        plt.ylabel(r"normalised flux")
+        plt.legend()
+        
+        return rest_wavelengths, this_mu
 
     @staticmethod
     def normalisation(rest_wavelengths, flux, noise_variance, 
@@ -1406,7 +1512,7 @@ class QSOLoaderZ(QSOLoader):
         ind = ( (rest_wavelengths >= normalization_min_lambda) & 
             (rest_wavelengths <= normalization_max_lambda))
 
-        this_median    = np.nanmedian(flux(ind))
+        this_median    = np.nanmedian(flux[ind])
         flux           = flux / this_median
         noise_variance = noise_variance / this_median ** 2
 
