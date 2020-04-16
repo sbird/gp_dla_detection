@@ -90,8 +90,8 @@ log_omega_interpolator = ...
 
 % initialize results
 % prevent parfor error, should use nan(num_quasars, num_dla_samples); or not save these variables;
-% min_z_dlas                    = nan(num_quasars, num_dla_samples);
-% max_z_dlas                    = nan(num_quasars, num_dla_samples);
+min_z_dlas                    = nan(num_quasars, num_dla_samples);
+max_z_dlas                    = nan(num_quasars, num_dla_samples);
 % sample_log_priors_no_dla      = nan(num_quasars, num_dla_samples); % comment out these to save memory
 % sample_log_priors_dla         = nan(num_quasars, num_dla_samples);
 % sample_log_likelihoods_no_dla = nan(num_quasars, num_dla_samples);
@@ -368,8 +368,8 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         this_min_z_dlas = min_z_dla(this_wavelengths, z_qso);
         this_max_z_dlas = max_z_dla(this_wavelengths, z_qso);
 
-        % min_z_dlas(quasar_ind, i) = this_min_z_dlas;
-        % max_z_dlas(quasar_ind, i) = this_max_z_dlas;
+        min_z_dlas(quasar_ind, i) = this_min_z_dlas;
+        max_z_dlas(quasar_ind, i) = this_max_z_dlas;
 
         sample_z_dlas = ...
             this_min_z_dlas +  ...
