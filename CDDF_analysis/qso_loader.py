@@ -1385,14 +1385,18 @@ class QSOLoaderZ(QSOLoader):
         this_sample_log_posteriors_no_dla = self.sample_log_posteriors_no_dla[:, nspec]
         this_sample_log_posteriors_dla    = self.sample_log_posteriors_dla[:, nspec]
 
+        make_fig()
+
         plt.scatter(self.offset_samples_qso,
             this_sample_log_posteriors_no_dla,
-            color="black", label="P(¬DLA | D)")
+            color="black", label="P(¬DLA | D)", 
+            rasterized=True)
         
         if dla_samples:
             plt.scatter(self.offset_samples_qso,
                 this_sample_log_posteriors_dla,
-                color="C1", label="P(DLA | D)", alpha=0.5)
+                color="C1", label="P(DLA | D)", alpha=0.5,
+                rasterized=True)
 
         # plot verticle lines corresponding to metal lines miss fitted lya
         z_ovi  = ovi_wavelength  * (1 + self.z_true[nspec]) / lya_wavelength - 1
@@ -1448,16 +1452,18 @@ class QSOLoaderZ(QSOLoader):
         this_noise_variance = self.find_this_noise_variance(nspec)
         this_flux           = self.find_this_flux(nspec)
 
-        # for Z code, the normalisation is not included in the preload
-        this_flux, this_noise_variance = self.normalisation(
-            this_wavelengths, this_flux, this_noise_variance,
-            self.normalization_min_lambda, self.normalization_max_lambda)
-
         # make the choice of z_qso flexible to allow visual inspecting the fitted spectra
         if z_sample:
             z_qso = z_sample
         else:
             z_qso = self.z_map[nspec]
+
+        this_rest_wavelengths = this_wavelengths / ( 1 + z_qso )
+
+        # for Z code, the normalisation is not included in the preload
+        this_flux, this_noise_variance = self.normalisation(
+            this_rest_wavelengths, this_flux, this_noise_variance,
+            self.normalization_min_lambda, self.normalization_max_lambda)
 
         this_rest_wavelengths = emitted_wavelengths(this_wavelengths, z_qso)
 
@@ -1497,7 +1503,7 @@ class QSOLoaderZ(QSOLoader):
 
         Parameters:
         ----
-        rest_wavelengths (np.ndarray)
+        wavelengths      (np.ndarray)
         flux             (np.ndarray)
         noise_variance   (np.ndarray)
         normalization_min_lambda (float)
