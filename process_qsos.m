@@ -90,8 +90,8 @@ log_omega_interpolator = ...
 
 % initialize results
 % prevent parfor error, should use nan(num_quasars, num_dla_samples); or not save these variables;
-% min_z_dlas                    = nan(num_quasars, num_dla_samples);
-% max_z_dlas                    = nan(num_quasars, num_dla_samples);
+min_z_dlas                    = nan(num_quasars, num_dla_samples);
+max_z_dlas                    = nan(num_quasars, num_dla_samples);
 % sample_log_priors_no_dla      = nan(num_quasars, num_dla_samples); % comment out these to save memory
 % sample_log_priors_dla         = nan(num_quasars, num_dla_samples);
 % sample_log_likelihoods_no_dla = nan(num_quasars, num_dla_samples);
@@ -155,7 +155,7 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     this_pixel_signal_to_noise  = sqrt(this_noise_variance) ./ abs(this_flux);
 
     % this is before pixel masking; nanmean to avoid possible NaN values
-    signal_to_noise(quasar_num) = nanmean(this_pixel_signal_to_noise);
+    signal_to_noise(quasar_ind) = nanmean(this_pixel_signal_to_noise);
 
     % this is saved for the MAP esitmate of z_QSO
     used_z_dla                         = nan(num_dla_samples, 1);
@@ -194,6 +194,7 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         this_flux           = this_flux(ind);
         this_noise_variance = this_noise_variance(ind);
         this_wavelengths    = this_wavelengths(ind);
+        this_pixel_mask     = this_pixel_mask(ind);
 
         % convert to QSO rest frame
         this_rest_wavelengths = emitted_wavelengths(this_wavelengths, z_qso);
@@ -213,12 +214,13 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         % computation
         this_unmasked_wavelengths = this_wavelengths(ind);
 
-        %ind = ind & (~this_pixel_mask);
+        ind = ind & (~this_pixel_mask);
 
         this_wavelengths      =      this_wavelengths(ind);
         this_rest_wavelengths = this_rest_wavelengths(ind);
         this_flux             =             this_flux(ind);
         this_noise_variance   =   this_noise_variance(ind);
+
         this_noise_variance(isinf(this_noise_variance)) = mean(this_noise_variance); %rare kludge to fix bad data
         
         if nnz(this_rest_wavelengths) < 1
@@ -362,8 +364,8 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         this_min_z_dlas = min_z_dla(this_wavelengths, z_qso);
         this_max_z_dlas = max_z_dla(this_wavelengths, z_qso);
 
-        % min_z_dlas(quasar_ind, i) = this_min_z_dlas;
-        % max_z_dlas(quasar_ind, i) = this_max_z_dlas;
+        min_z_dlas(quasar_ind, i) = this_min_z_dlas;
+        max_z_dlas(quasar_ind, i) = this_max_z_dlas;
 
         sample_z_dlas = ...
             this_min_z_dlas +  ...
@@ -391,6 +393,9 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         % absorption corresponding to this sample
         absorption = voigt(padded_wavelengths, sample_z_dlas(i), ...
             nhi_samples(i), num_lines);
+        
+        % add this line back for implementing pixel masking
+        absorption = absorption(ind);
 
         % delta z = v / c = H(z) d / c = 70 (km/s/Mpc) * sqrt(0.3 * (1+z)^3 + 0.7) * (5 Mpc) / (3x10^5 km/s) ~ 0.005 at z=3
         if add_proximity_zone
@@ -492,8 +497,9 @@ variables_to_save = {'training_release', 'training_set_name', ...
     'model_posteriors', 'p_no_dlas', ...
     'p_dlas', 'z_map', 'z_true', 'dla_true', 'z_dla_map', 'n_hi_map', 'signal_to_noise', 'all_thing_ids'};
 
-filename = sprintf('%s/processed_qsos_%s-%s', ...
+filename = sprintf('%s/processed_qsos_%s-%s_%d-%d', ...
     processed_directory(release), ...
-    test_set_name, optTag);
+    test_set_name, optTag, ...
+    qso_ind(1), qso_ind(1) + numel(qso_ind));
 
 save(filename, variables_to_save{:}, '-v7.3');

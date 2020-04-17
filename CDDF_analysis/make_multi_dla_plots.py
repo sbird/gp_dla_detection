@@ -7,7 +7,8 @@ from scipy.interpolate import interp1d
 import matplotlib 
 from matplotlib import pyplot as plt 
 from matplotlib import cm
-from .qso_loader import QSOLoader, file_loader
+from .qso_loader import QSOLoaderMultiDLA as QSOLoader
+from .qso_loader import file_loader
 from .set_parameters import *
 from .dla_data import dla_data
 
