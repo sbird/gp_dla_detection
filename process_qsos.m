@@ -399,6 +399,9 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         % absorption corresponding to this sample
         absorption = voigt(padded_wavelengths, sample_z_dlas(i), ...
             nhi_samples(i), num_lines);
+        
+        % add this line back for implementing pixel masking
+        absorption = absorption(ind);
 
         % delta z = v / c = H(z) d / c = 70 (km/s/Mpc) * sqrt(0.3 * (1+z)^3 + 0.7) * (5 Mpc) / (3x10^5 km/s) ~ 0.005 at z=3
         if add_proximity_zone
