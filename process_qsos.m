@@ -204,6 +204,7 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         this_flux           = this_flux(ind);
         this_noise_variance = this_noise_variance(ind);
         this_wavelengths    = this_wavelengths(ind);
+        this_pixel_mask     = this_pixel_mask(ind);
 
         % convert to QSO rest frame
         this_rest_wavelengths = emitted_wavelengths(this_wavelengths, z_qso);
@@ -223,12 +224,13 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         % computation
         this_unmasked_wavelengths = this_wavelengths(ind);
 
-        %ind = ind & (~this_pixel_mask);
+        ind = ind & (~this_pixel_mask);
 
         this_wavelengths      =      this_wavelengths(ind);
         this_rest_wavelengths = this_rest_wavelengths(ind);
         this_flux             =             this_flux(ind);
         this_noise_variance   =   this_noise_variance(ind);
+
         this_noise_variance(isinf(this_noise_variance)) = mean(this_noise_variance); %rare kludge to fix bad data
         
         fluxes{i}           = this_flux;
