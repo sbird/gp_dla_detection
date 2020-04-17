@@ -204,6 +204,7 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         this_flux           = this_flux(ind);
         this_noise_variance = this_noise_variance(ind);
         this_wavelengths    = this_wavelengths(ind);
+        this_pixel_mask     = this_pixel_mask(ind);
 
         % convert to QSO rest frame
         this_rest_wavelengths = emitted_wavelengths(this_wavelengths, z_qso);
@@ -223,12 +224,13 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         % computation
         this_unmasked_wavelengths = this_wavelengths(ind);
 
-        %ind = ind & (~this_pixel_mask);
+        ind = ind & (~this_pixel_mask);
 
         this_wavelengths      =      this_wavelengths(ind);
         this_rest_wavelengths = this_rest_wavelengths(ind);
         this_flux             =             this_flux(ind);
         this_noise_variance   =   this_noise_variance(ind);
+
         this_noise_variance(isinf(this_noise_variance)) = mean(this_noise_variance); %rare kludge to fix bad data
         
         fluxes{i}           = this_flux;
@@ -397,6 +399,9 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         % absorption corresponding to this sample
         absorption = voigt(padded_wavelengths, sample_z_dlas(i), ...
             nhi_samples(i), num_lines);
+        
+        % add this line back for implementing pixel masking
+        absorption = absorption(ind);
 
         % delta z = v / c = H(z) d / c = 70 (km/s/Mpc) * sqrt(0.3 * (1+z)^3 + 0.7) * (5 Mpc) / (3x10^5 km/s) ~ 0.005 at z=3
         if add_proximity_zone
