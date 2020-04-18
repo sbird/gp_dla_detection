@@ -30,11 +30,13 @@ plt.show()
 # Plot the spectra with this_mu, using MAP z estimate
 qsos.plot_this_mu(nspec=nspec, suppressed=True, 
     num_voigt_lines=3, num_forest_lines=6, z_sample=qsos.z_map[nspec])
+plt.ylim(-1, 5)
 plt.show()
 
 # Plot the spectra with this_mu, using True zQSO
 qsos.plot_this_mu(nspec=nspec, suppressed=True, 
     num_voigt_lines=3, num_forest_lines=6, z_sample=qsos.z_qsos[nspec])
+plt.ylim(-1, 5)
 plt.show()
 
 for nspec in np.where(index)[0]:
@@ -45,29 +47,31 @@ for nspec in np.where(index)[0]:
     plt.savefig("{}_posterior_zqso_samples_delta_z_{}.pdf".format(
             qsos.thing_ids[nspec], delta_z),
             dpi=150, format='pdf')
-    plt.close()
-    plt.clf()
-    # plt.show()
+    # plt.close()
+    # plt.clf()
+    plt.show()
 
     # saving plots: MAP estimate model
     qsos.plot_this_mu(nspec=nspec, suppressed=True, 
         num_voigt_lines=3, num_forest_lines=6, z_sample=qsos.z_map[nspec])
+    plt.ylim(-1, 5)        
     make_zqso_plots.save_figure(
         "{}_this_mu_delta_z_{}_ZMAP".format(
             qsos.thing_ids[nspec], delta_z))
-    plt.close()
-    plt.clf()
-    # plt.show()
+    # plt.close()
+    # plt.clf()
+    plt.show()
 
     # saving plots: True QSO rest-frame
     qsos.plot_this_mu(nspec=nspec, suppressed=True, 
         num_voigt_lines=3, num_forest_lines=6, z_sample=qsos.z_qsos[nspec])
+    plt.ylim(-1, 5)    
     make_zqso_plots.save_figure(
         "{}_this_mu_delta_z_{}_ZTrue".format(
             qsos.thing_ids[nspec], delta_z))
-    plt.close()
-    plt.clf()
-    # plt.show()
+    # plt.close()
+    # plt.clf()
+    plt.show()
 
 # inspect the this_wavelength due to the normalisation is weird
 this_wavelengths    = qsos.find_this_wavelengths(nspec)
