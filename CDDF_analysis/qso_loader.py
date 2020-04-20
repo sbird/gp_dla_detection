@@ -1387,6 +1387,8 @@ class QSOLoaderZ(QSOLoader):
         this_sample_log_posteriors_no_dla = self.sample_log_posteriors_no_dla[:, nspec_nan]
         this_sample_log_posteriors_dla    = self.sample_log_posteriors_dla[:, nspec_nan]
 
+        assert self.processed_file['z_true'][0, nspec_nan] == self.z_true[nspec]
+
         this_sample_log_posteriors = logsumexp([
             this_sample_log_posteriors_no_dla, this_sample_log_posteriors_dla], axis=0)
 
