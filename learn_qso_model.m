@@ -36,6 +36,11 @@ num_rest_pixels = numel(rest_wavelengths);
 rest_fluxes          = nan(num_quasars, num_rest_pixels);
 rest_noise_variances = nan(num_quasars, num_rest_pixels);
 
+% the preload_qsos should fliter out empty spectra;
+% this line is to prevent there is any empty spectra
+% in preloaded_qsos.mat for some reason
+is_empty             = false(num_quasars, 1);
+
 % interpolate quasars onto chosen rest wavelength grid
 for i = 1:num_quasars
   z_qso = z_qsos(i);
@@ -50,13 +55,40 @@ for i = 1:num_quasars
   this_flux(this_pixel_mask)           = nan;
   this_noise_variance(this_pixel_mask) = nan;
 
+  fprintf('processing quasar %i with lambda_size = %i %i ...\n', i, size(this_wavelengths))
+  
+  if all(size(this_wavelengths) == [0 0])
+    is_empty(i, 1) = 1;
+    continue;
+  end
+
   rest_fluxes(i, :) = ...
       interp1(this_rest_wavelengths, this_flux,           rest_wavelengths);
 
+  %normalizing here
+  ind = (this_rest_wavelengths >= normalization_min_lambda) & ...
+        (this_rest_wavelengths <= normalization_max_lambda) & ...
+        (~this_pixel_mask);
+
+  this_median = nanmedian(this_flux(ind));
+  rest_fluxes(i, :) = rest_fluxes(i, :) / this_median;
+
   rest_noise_variances(i, :) = ...
       interp1(this_rest_wavelengths, this_noise_variance, rest_wavelengths);
+  rest_noise_variances(i, :) = rest_noise_variances(i, :) / this_median .^ 2;
 end
 clear('all_wavelengths', 'all_flux', 'all_noise_variance', 'all_pixel_mask');
+
+% filter out empty spectra
+% note: if you've done this in preload_qsos then skip these lines
+z_qsos               = z_qsos(~is_empty);
+rest_fluxes          = rest_fluxes(~is_empty, :);
+rest_noise_variances = rest_noise_variances(~is_empty, :);
+
+% update num_quasars in consideration
+num_quasars = numel(z_qsos);
+
+fprintf('Get rid of empty spectra, num_quasars = %i\n', num_quasars);
 
 % Filter out spectra with redshifts outside the training region
 ind = (z_qsos > z_qso_training_min_cut) & (z_qsos < z_qso_training_max_cut);
@@ -84,9 +116,26 @@ mu = nanmean(rest_fluxes);
 centered_rest_fluxes = bsxfun(@minus, rest_fluxes, mu);
 clear('rest_fluxes');
 
+% small fix to the data fit into the pca:
+% make the NaNs to the medians of a given row
+% rememeber not to inject this into the actual
+% joint likelihood maximisation
+pca_centered_rest_flux = centered_rest_fluxes;
+
+[num_quasars, ~] = size(pca_centered_rest_flux);
+
+for i = 1:num_quasars
+  this_pca_cetnered_rest_flux = pca_centered_rest_flux(i, :);
+
+  % assign median value for each row to nan
+  ind = isnan(this_pca_cetnered_rest_flux);
+  
+  pca_centered_rest_flux(i, ind) = nanmedian(this_pca_cetnered_rest_flux);
+end
+
 % get top-k PCA vectors to initialize M
 [coefficients, ~, latent] = ...
-    pca(centered_rest_fluxes, ...
+    pca(pca_centered_rest_flux, ...
         'numcomponents', k, ...
         'rows',          'pairwise');
 % initialize A to top-k PCA components of non-DLA-containing spectra
