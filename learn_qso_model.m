@@ -43,6 +43,11 @@ rest_noise_variances = nan(num_quasars, num_rest_pixels);
 % in preloaded_qsos.mat for some reason
 is_empty             = false(num_quasars, 1);
 
+% contains strings for out-of-restframe computations
+f_s_bluewards = ''; nv_s_bluewards = '';
+f_s_redwards = ''; nv_s_redwards = '';
+nl = newline; count = 0;
+
 % interpolate quasars onto chosen rest wavelength grid
 for i = 1:num_quasars
   z_qso = z_qsos(i);
@@ -105,7 +110,39 @@ for i = 1:num_quasars
   rest_noise_variances(i, :) = ...
       interp1(this_rest_wavelengths, this_noise_variance, rest_wavelengths);
   rest_noise_variances(i, :) = rest_noise_variances(i, :) / this_median .^ 2;
+
+  %setting up bluward/redwards of restframe txt files
+  f = this_flux(this_rest_wavelengths < min_lambda & ~this_pixel_mask);
+  nv = this_noise_variance(this_rest_wavelengths < min_lambda & ~this_pixel_mask);
+  %setting out-of-range bluewards/redwards files here
+  if ~isempty(f)
+      count = count + 1;
+      f_l = sprintf('%f ', f);
+      nv_l = sprintf('%f ', nv);
+      f_s_bluewards = sprintf('%s %s', f_s_bluewards, f_l);
+      nv_s_bluewards = sprintf('%s %s', nv_s_bluewards, nv_l);
+  end
+  f = this_flux(this_rest_wavelengths > max_lambda & ~this_pixel_mask);
+  nv = this_noise_variance(this_rest_wavelengths > max_lambda & ~this_pixel_mask);
+  %setting out-of-range bluewards/redwards files here
+  if ~isempty(f)
+      count = count + 1;
+      f_l = sprintf('%f,', f);
+      nv_l = sprintf('%f,', nv);
+      f_s_redwards = sprintf('%s %s', f_s_redwards, f_l);
+      nv_s_redwards = sprintf('%s %s', nv_s_redwards, nv_l);
+  end
 end
+
+f_id = fopen('red.txt', 'w');
+fprintf(f_id, '%s %s %s', f_s_redwards, nl, nv_s_redwards);
+fclose(f_id);
+
+f_id = fopen('blue.txt', 'w');
+fprintf(f_id, '%s %s %s', f_s_bluewards, nl, nv_s_bluewards);
+fclose(f_id);
+
+clear('f_id', 'nv_id', 'f_s_bluewards', 'nv_s_bluewards', 'f_s_redwards', 'f_s_bluewards');
 clear('all_wavelengths', 'all_flux', 'all_noise_variance', 'all_pixel_mask');
 
 % filter out empty spectra

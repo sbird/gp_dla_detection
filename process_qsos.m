@@ -79,14 +79,31 @@ if exist('qso_ind', 'var') == 0
 end
 num_quasars = numel(qso_ind);
 
+% augment model for interpolation
+min_lambda_testing = 0; max_lambda_testing = 3000;
+rest_wavelengths_testing = [min_lambda_testing:dlambda:max_lambda_testing];
+
+%read in from python output for bluewards & redwards models
+
+%
+mu = [ ones(size(bluewards_ind))*blueward_fluxes_mean, ...
+       mu, ...
+       ones(size(redwards_ind))*redward_fluxes_mean ];
+M = [ eye(length(bluewards_ind, k)*blueward_fluxes_mean,...
+      M, ...
+      eye(length(redwards_ind, k)*redwards_fluxes_mean)];
+log_omega = [ zeros(size(bluewards_ind)), ...
+       log_omega, ...
+       zeros(size(redwards_ind)) ];
+
 %load('./test/M.mat');
 % preprocess model interpolants
 mu_interpolator = ...
-    griddedInterpolant(rest_wavelengths,        mu,        'linear');
+    griddedInterpolant(rest_wavelengths_testing,        mu,        'linear');
 M_interpolator = ...
-    griddedInterpolant({rest_wavelengths, 1:k}, M,         'linear');
+    griddedInterpolant({rest_wavelengths_testing, 1:k}, M,         'linear');
 log_omega_interpolator = ...
-    griddedInterpolant(rest_wavelengths,        log_omega, 'linear');
+    griddedInterpolant(rest_wavelengths_testing,        log_omega, 'linear');
 
 % initialize results
 % prevent parfor error, should use nan(num_quasars, num_dla_samples); or not save these variables;
@@ -193,8 +210,8 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         this_pixel_mask     = this_out_pixel_mask;
 
         %Cut off observations
-        max_pos_lambda = observed_wavelengths(max_lambda, z_qso);
-        min_pos_lambda = observed_wavelengths(min_lambda, z_qso);
+        max_pos_lambda = observed_wavelengths(max_lambda_testing, z_qso);
+        min_pos_lambda = observed_wavelengths(min_lambda_testing, z_qso);
         max_observed_lambda = min(max_pos_lambda, max(this_wavelengths));
 
         min_observed_lambda = max(min_pos_lambda, min(this_wavelengths));
