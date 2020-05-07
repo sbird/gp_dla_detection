@@ -1,71 +1,58 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import scipy.optimize as opt
 import sys
 
+# model:
+# a series of observations, x, are made iid from the model
+#  x_i = a + b_i
+# where a and b_i are both normally distributed
+# a has unknown mean (amu) and variance (avar) which are the model parameters
+# b_i has 0 mean and known variance (bvar), which varies per observation
+
+# load data from text file:
+# first row (whitespace separated) are recorded values
+# second row (whitespace separated) are the corresponding estimated 
+#  observational noise variances
 D = np.loadtxt(sys.argv[1])
 
+# remove infinite variance values
 D = D[:,np.isfinite(D[1,:])]
-
-#npts = 1000
-#truemu = 2
-#truevar = 4
-#vs = np.random.rand(1,npts)*25
-#D = np.vstack((np.random.randn(1,npts)*np.sqrt(vs+truevar)+truemu,vs))
+x = D[0,:]
+bvar = D[1,:]
 m = D.shape[1]
 
+# multiplicative factor around the naive estimate to define
+# the region in which to search for MLE estimate
 spread = 100
 
-def fitmu(D,sigma2,dens=None):
+# fits the mean of the model, given the variance of the model
+# (can be done in closed form)
+def fitmu(x,bvar,avar,dens=None):
     if dens is None:
-        dens = D[1,:] + sigma2
-    return np.sum(D[0,:]/dens)/np.sum(1.0/dens)
+        dens = bvar + avar
+    return np.sum(x/dens)/np.sum(1.0/dens)
 
-# ignores the sqrt(2pi) part
-def negllh(D,sigma2,mu=None):
-    dens = D[1,:] + sigma2
+# returns negative llh of the data
+# ignores the sqrt(2pi) part (should add (#x)*log(sqrt(2pi)) to
+#  get true negative log-likelihood)
+def negllh(x,bvar,avar,mu=None):
+    dens = bvar + avar
     if mu is None:
-        mu = fitmu(D,sigma2,dens)
-    return np.sum(np.log(dens) + np.square(D[0,:] - mu)/dens)/2
+        mu = fitmu(D,avar,dens)
+    return np.sum(np.log(dens) + np.square(x - mu)/dens)/2
 
-naivemu = np.mean(D[0,:])
-naivevar = np.sum(np.square(D[0,:]-naivemu))/m - np.mean(D[1,:])
-
-onaivemu = np.sum(D[0,:]/D[1,:])/np.sum(1.0/D[1,:])
-onaivevar = np.sum(np.square(D[0,:]-onaivemu)/D[1,:])/np.sum(1.0/D[1,:])
-
-'''
-print("ranges: ",np.max(D[0,:]),np.min(D[0,:]),np.max(D[1,:]),np.min(D[1,:]))
-print ("mean var: ",np.mean(D[1,:]))
-print(naivemu,naivevar,negllh(D,naivevar,naivemu))
-print(onaivemu,onaivevar,negllh(D,onaivevar,onaivemu))
-'''
-
-lessnaivemu = fitmu(D,naivevar)
-#print(lessnaivemu,naivevar,negllh(D,naivevar,lessnaivemu))
-olessnaivemu = fitmu(D,onaivevar)
-#print(olessnaivemu,onaivevar,negllh(D,onaivevar,olessnaivemu))
+# rough estimates of the variance of a (avar)
+# to be used to find region in which to search for MLE
+naivemu = np.sum(D[0,:]/D[1,:])/np.sum(1.0/D[1,:])
+naivevar = np.sum(np.square(D[0,:]-naivemu)/D[1,:])/np.sum(1.0/D[1,:])
 
 # REAL WORK NEXT LINE:
-optsol = opt.minimize_scalar(lambda sigma2 : negllh(D,sigma2), bounds=(onaivevar/spread,onaivevar*spread),method='bounded')
+# line search for avar (with amu calculated analytically from avar and data)
+# for minimum of negllh
+optsol = opt.minimize_scalar(lambda avar : negllh(x,bvar,avar), bounds=(naivevar/spread,naivevar*spread),method='bounded')
 
 if not optsol.success:
     print("optimization failed")
-optvar = optsol.x
-optmu = fitmu(D,optvar)
-#print('optmu, optvar, negllh: ');
-print(optmu,optvar,negllh(D,optvar,optmu))
-'''
-xs = np.logspace(np.log(naivevar/spread),np.log(naivevar*spread),100)
-ys = np.array([negllh(D,x) for x in xs])
-plt.semilogx(xs,ys)
-plt.semilogx(optvar,negllh(D,optvar,optmu),'k*')
-plt.semilogx(naivevar,negllh(D,naivevar,naivemu),'g*')
-plt.semilogx(naivevar,negllh(D,naivevar),'c*')
-plt.semilogx(onaivevar,negllh(D,onaivevar,onaivemu),'r*')
-plt.semilogx(onaivevar,negllh(D,onaivevar),'m*')
-plt.legend(['negllh','opt value, mu=%g' % optmu,'naive mu & var, mu=%g' % naivemu,'naive var, opt mu, mu=%g' % lessnaivemu,'2nd naive mu & var, mu=%g' % onaivemu,'2nd naive var, opt mu, mu=%g' %olessnaivemu])
-plt.xlabel('variance')
-plt.ylabel('negative log-likelihood')
-plt.show()
-'''
+mleavar = optsol.x
+mleamu = fitmu(x,bvar,mleavar)
+print(mleamu,mleavar,negllh(D,mleavar,mleamu))
