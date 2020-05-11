@@ -141,7 +141,8 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         all_exceptions(quasar_ind, 1) = 1;
         continue;
     end
-    
+   
+    addpath('./addrestfit'); 
     %preprocess Gaussian i.i.d. model for off-restframe observations
     bw_model = makedist('Normal', 'mu', bluewards_mu, 'sigma', bluewards_sigma);
     rw_model = makedist('Normal', 'mu', redwards_mu, 'sigma', redwards_sigma);
