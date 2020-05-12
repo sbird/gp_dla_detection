@@ -59,7 +59,7 @@ all_pixel_mask     =     all_pixel_mask(test_ind);
 all_thing_ids      =   catalog.thing_ids(test_ind);
 
 z_qsos = catalog.z_qsos(test_ind);
-snrs   = snrs(test_ind);
+% snrs   = snrs(test_ind);
 
 num_quasars = numel(z_qsos);
 if exist('qso_ind', 'var') == 0
@@ -101,8 +101,8 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     z_true(quasar_ind)   = z_qsos(quasar_num);
 
     % rescale the occams_factor
-    this_snr             = snrs(quasar_num);
-    this_occams_factor   = occams_factor * this_snr / nanmedian(snrs);
+    % this_snr             = snrs(quasar_num);
+    % this_occams_factor   = occams_factor; %* this_snr / nanmedian(snrs);
 
     fprintf('processing quasar %i/%i (z_true = %0.4f) ...', ...
         quasar_ind, num_quasars, z_true(quasar_ind));
@@ -164,9 +164,11 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         lambda_observed = (max_observed_lambda - min_observed_lambda);
         
         %Find probability for out-of-range model
-        bw_likelihoods = pdf(bw_model, this_flux(this_wavelengths < min_observed_lambda));
+        bw_likelihoods = pdf(bw_model, this_flux( ...
+             (this_wavelengths < min_observed_lambda) & ~this_pixel_mask ));
         bw_log_likelihood = sum(log(bw_likelihoods));
-        rw_likelihoods = pdf(rw_model, this_flux(this_wavelengths > max_observed_lambda));
+        rw_likelihoods = pdf(rw_model, this_flux( ...
+            (this_wavelengths > max_observed_lambda)  & ~this_pixel_mask ));
         rw_log_likelihood = sum(log(rw_likelihoods));
 
         ind = (this_wavelengths > min_observed_lambda) & (this_wavelengths < max_observed_lambda);
