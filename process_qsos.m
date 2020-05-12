@@ -16,16 +16,16 @@ occams_factor = 2000;
 variables_to_load = {'rest_wavelengths', 'mu', 'M', 'log_omega',
     'bluewards_mu', 'bluewards_sigma', ...
     'redwards_mu', 'redwards_sigma'};
-load(sprintf('%s/learned_qso_model_%s',             ...
+load(sprintf('%s/learned_zqso_only_model_outdata_%s_norm_%d-%d',             ...
     processed_directory(training_release), ...
-    training_set_name),                    ...
+    training_set_name, normalization_min_lambda, normalization_max_lambda),  ...
     variables_to_load{:});
 
 % load redshifts from catalog to process
 catalog = load(sprintf('%s/zqso_only_catalog', processed_directory(release)));
 
 z_qsos = catalog.z_qsos;
-snrs   = catalog.snrs;   % catalogue snrs helps to rescale occam's razor
+% snrs   = catalog.snrs;   % catalogue snrs helps to rescale occam's razor
 
 rng('default');
 sequence = scramble(haltonset(1), 'rr2');
