@@ -165,10 +165,10 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         
         %Find probability for out-of-range model
         bw_likelihoods = pdf(bw_model, this_flux( ...
-             (this_wavelengths < min_observed_lambda) & ~this_pixel_mask ));
+             (this_wavelengths < min_observed_lambda)  ));
         bw_log_likelihood = sum(log(bw_likelihoods));
         rw_likelihoods = pdf(rw_model, this_flux( ...
-            (this_wavelengths > max_observed_lambda)  & ~this_pixel_mask ));
+            (this_wavelengths > max_observed_lambda)  ));
         rw_log_likelihood = sum(log(rw_likelihoods));
 
         ind = (this_wavelengths > min_observed_lambda) & (this_wavelengths < max_observed_lambda);
