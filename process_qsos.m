@@ -1,16 +1,13 @@
 % process_qsos: run DLA detection algorithm on specified objects
-% 
-% Apr 8, 2020: add all Lyman series to the effective optical depth
-%   effective_optical_depth := ∑ τ fi1 λi1 / ( f21 λ21 ) * ( 1 + z_i1 )^β
-%  where 
-%   1 + z_i1 =  λobs / λ_i1 = λ_lya / λ_i1 *  (1 + z_a)
-% Dec 25, 2019: add Lyman series to the noise variance training
-%   s(z)     = 1 - exp(-effective_optical_depth) + c_0 
-% the mean values of Kim's effective optical depth
-prev_tau_0 = 0.0023;
-prev_beta  = 3.65;
+%
+% Apr 28: add occams razor for penalising the missing pixels,
+%   this factor is tuned to affect log likelihood in a range +- 500,
+%   this value could be effective to penalise every likelihoods for zQSO > zCIV
+%   the current implemetation is:
+%     likelihood - occams_factor * (1 - lambda_observed / (max_lambda - min_lambda) )
+%   and occams_factor is a tunable hyperparameter
 
-occams_factor = 2000;
+occams_factor = 2500;
 
 % load QSO model from training release
 variables_to_load = {'rest_wavelengths', 'mu', 'M', ...
@@ -25,7 +22,6 @@ load(sprintf('%s/learned_zqso_only_model_outdata_%s_norm_%d-%d',             ...
 catalog = load(sprintf('%s/zqso_only_catalog', processed_directory(release)));
 
 z_qsos = catalog.z_qsos;
-% snrs   = catalog.snrs;   % catalogue snrs helps to rescale occam's razor
 
 rng('default');
 sequence = scramble(haltonset(1), 'rr2');
@@ -59,7 +55,6 @@ all_pixel_mask     =     all_pixel_mask(test_ind);
 all_thing_ids      =   catalog.thing_ids(test_ind);
 
 z_qsos = catalog.z_qsos(test_ind);
-% snrs   = snrs(test_ind);
 
 num_quasars = numel(z_qsos);
 if exist('qso_ind', 'var') == 0
@@ -99,10 +94,6 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     tic;
     quasar_num = qso_ind(quasar_ind);
     z_true(quasar_ind)   = z_qsos(quasar_num);
-
-    % rescale the occams_factor
-    % this_snr             = snrs(quasar_num);
-    % this_occams_factor   = occams_factor; %* this_snr / nanmedian(snrs);
 
     fprintf('processing quasar %i/%i (z_true = %0.4f) ...', ...
         quasar_ind, num_quasars, z_true(quasar_ind));
@@ -220,11 +211,12 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         
         sample_log_priors = 0;
 
-        %occams = occams_factor * (1 - lambda_observed / (max_lambda - min_lambda) );
+        occams = occams_factor * (1 - lambda_observed / (max_lambda - min_lambda) );
 
         sample_log_posteriors(quasar_ind, i) = ...
             log_mvnpdf_low_rank(this_flux, this_mu, this_M, this_noise_variance) + sample_log_priors ...
-            + bw_log_likelihood + rw_log_likelihood;
+            + bw_log_likelihood + rw_log_likelihood ...
+            - occams;
 
         % % Correct for incomplete data
         % corr = nnz(ind) - length(this_rest_wavelengths);
@@ -253,10 +245,10 @@ end
 variables_to_save = {'training_release', 'training_set_name', 'offset_samples_qso', 'sample_log_posteriors', ...
      'z_map', 'z_qsos', 'all_thing_ids', 'test_ind', 'z_true'};
 
-filename = sprintf('%s/processed_zqso_only_qsos_%s-%s_%d-%d_%d-%d_outdata_pixel', ...
+filename = sprintf('%s/processed_zqso_only_qsos_%s-%s_%d-%d_%d-%d_outdata_pixel_oc%d', ...
     processed_directory(release), ...
     test_set_name, optTag, ...
     qso_ind(1), qso_ind(1) + numel(qso_ind), ...
-    normalization_min_lambda, normalization_max_lambda);
+    normalization_min_lambda, normalization_max_lambda, occams_factor);
 
 save(filename, variables_to_save{:}, '-v7.3');
