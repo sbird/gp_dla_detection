@@ -7,13 +7,13 @@
 %     likelihood - occams_factor * (1 - lambda_observed / (max_lambda - min_lambda) )
 %   and occams_factor is a tunable hyperparameter
 
-occams_factor = 2500;
+occams_factor = 0;
 
 % load QSO model from training release
 variables_to_load = {'rest_wavelengths', 'mu', 'M', ...
     'bluewards_mu', 'bluewards_sigma', ...
     'redwards_mu', 'redwards_sigma'};
-load(sprintf('%s/learned_zqso_only_model_outdata_%s_norm_%d-%d',             ...
+load(sprintf('%s/learned_zqso_only_model_outdata_normout_%s_norm_%d-%d',             ...
     processed_directory(training_release), ...
     training_set_name, normalization_min_lambda, normalization_max_lambda),  ...
     variables_to_load{:});
@@ -154,14 +154,6 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         min_observed_lambda = max(min_pos_lambda, min(this_wavelengths));
         lambda_observed = (max_observed_lambda - min_observed_lambda);
         
-        %Find probability for out-of-range model
-        bw_likelihoods = pdf(bw_model, this_flux( ...
-             (this_wavelengths < min_observed_lambda) & ~(this_pixel_mask) ));
-        bw_log_likelihood = sum(log(bw_likelihoods));
-        rw_likelihoods = pdf(rw_model, this_flux( ...
-            (this_wavelengths > max_observed_lambda)  & ~(this_pixel_mask) ));
-        rw_log_likelihood = sum(log(rw_likelihoods));
-
         ind = (this_wavelengths > min_observed_lambda) & (this_wavelengths < max_observed_lambda);
         this_flux           = this_flux(ind);
         this_noise_variance = this_noise_variance(ind);
@@ -179,6 +171,18 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         this_flux           = this_flux / this_median;
         this_noise_variance = this_noise_variance / this_median .^ 2;
         
+        % Normalise the observed flux for out-of-range model since the
+        % redward- and blueward- models were trained with normalisation.
+        %Find probability for out-of-range model
+        this_normalized_flux = this_out_flux / this_median; % since we've modified this_flux we need to use
+                                                            % this_out_flux outside the parfor loop
+        bw_likelihoods = pdf(bw_model, this_normalized_flux( ...
+             (this_out_wavelengths < min_observed_lambda) & ~(this_out_pixel_mask) ));
+        bw_log_likelihood = sum(log(bw_likelihoods));
+        rw_likelihoods = pdf(rw_model, this_normalized_flux( ...
+            (this_out_wavelengths > max_observed_lambda)  & ~(this_out_pixel_mask) ));
+        rw_log_likelihood = sum(log(rw_likelihoods));
+
         ind = (this_rest_wavelengths >= min_lambda) & ...
             (this_rest_wavelengths <= max_lambda);
         
@@ -245,7 +249,7 @@ end
 variables_to_save = {'training_release', 'training_set_name', 'offset_samples_qso', 'sample_log_posteriors', ...
      'z_map', 'z_qsos', 'all_thing_ids', 'test_ind', 'z_true'};
 
-filename = sprintf('%s/processed_zqso_only_qsos_%s-%s_%d-%d_%d-%d_outdata_pixel_oc%d', ...
+filename = sprintf('%s/processed_zqso_only_qsos_%s-%s_%d-%d_%d-%d_outdata_normout_oc%d', ...
     processed_directory(release), ...
     test_set_name, optTag, ...
     qso_ind(1), qso_ind(1) + numel(qso_ind), ...
