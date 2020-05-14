@@ -6,8 +6,14 @@
 %   the current implemetation is:
 %     likelihood - occams_factor * (1 - lambda_observed / (max_lambda - min_lambda) )
 %   and occams_factor is a tunable hyperparameter
+% 
+% May 11: out-of-range data penalty,
+%   adding additional log-likelihoods to the null model log likelihood,
+%   this additional log-likelihoods are:
+%     log N(y_bluewards; bluewards_mu, diag(V_bluewards) + bluewards_sigma^2 )
+%     log N(y_redwards;  redwards_mu,  diag(V_redwards)  + redwards_sigma^2 )
 
-occams_factor = 0;
+occams_factor = 0; % turn this to zero if you don't want the incomplete data penalty
 
 % load QSO model from training release
 variables_to_load = {'rest_wavelengths', 'mu', 'M', ...
@@ -76,8 +82,6 @@ z_map                         = nan(num_quasars, 1);
 signal_to_noise               = nan(num_quasars, 1);
 
 z_list                   = 1:length(offset_samples_qso);
-%Debug output
-%all_mus = cell(size(z_list));
 
 fluxes                   = cell(length(z_list), 1);
 rest_wavelengths         = cell(length(z_list), 1);
@@ -169,8 +173,8 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         % Normalise the observed flux for out-of-range model since the
         % redward- and blueward- models were trained with normalisation.
         %Find probability for out-of-range model
-        this_normalized_flux = this_out_flux / this_median; % since we've modified this_flux we need to use
-                                                            % this_out_flux outside the parfor loop
+        this_normalized_flux = this_out_flux / this_median; % since we've modified this_flux, we thus need to
+                                                            % use this_out_flux which is outside the parfor loop
         this_normalized_noise_variance = this_out_noise_variance / this_median .^2;
 
         % select blueward region
@@ -195,13 +199,6 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
 
         ind = (this_rest_wavelengths >= min_lambda) & ...
             (this_rest_wavelengths <= max_lambda);
-        
-        % if (min_observed_lambda > max_observed_lambda) | (nnz(ind) < 150)
-        %     % If we have no data in the observed range, this sample is maximally unlikely.
-        %     sample_log_posteriors(quasar_ind, i) = -1.e50;
-        %     continue;
-        % end
-        %ind = ind & (~this_pixel_mask);
         
         ind = ind & (~this_pixel_mask);
 
@@ -231,13 +228,6 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
             log_mvnpdf_low_rank(this_flux, this_mu, this_M, this_noise_variance) + sample_log_priors ...
             + bw_log_likelihood + rw_log_likelihood ...
             - occams;
-
-        % % Correct for incomplete data
-        % corr = nnz(ind) - length(this_rest_wavelengths);
-        % sample_log_posteriors(quasar_ind, i) = sample_log_posteriors(quasar_ind, i) + corr;
-
-        % fprintf_debug(' ... log p(D | z_QSO)     : %0.2f\n', ...
-        %     sample_log_posteriors(quasar_ind, i));
     end
     this_sample_log = sample_log_posteriors(quasar_ind, :);
     
