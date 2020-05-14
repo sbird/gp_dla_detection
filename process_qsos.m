@@ -131,11 +131,6 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         all_exceptions(quasar_ind, 1) = 1;
         continue;
     end
-   
-    % addpath('./addrestfit'); 
-    %preprocess Gaussian i.i.d. model for off-restframe observations
-    bw_model = makedist('Normal', 'mu', bluewards_mu, 'sigma', bluewards_sigma);
-    rw_model = makedist('Normal', 'mu', redwards_mu, 'sigma', redwards_sigma);
     
     parfor i = 1:num_zqso_samples       %variant redshift in quasars
         z_qso = offset_samples_qso(i);
@@ -176,12 +171,27 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         %Find probability for out-of-range model
         this_normalized_flux = this_out_flux / this_median; % since we've modified this_flux we need to use
                                                             % this_out_flux outside the parfor loop
-        bw_likelihoods = pdf(bw_model, this_normalized_flux( ...
-             (this_out_wavelengths < min_observed_lambda) & ~(this_out_pixel_mask) ));
-        bw_log_likelihood = sum(log(bw_likelihoods));
-        rw_likelihoods = pdf(rw_model, this_normalized_flux( ...
-            (this_out_wavelengths > max_observed_lambda)  & ~(this_out_pixel_mask) ));
-        rw_log_likelihood = sum(log(rw_likelihoods));
+        this_normalized_noise_variance = this_out_noise_variance / this_median .^2;
+
+        % select blueward region
+        ind_bw = (this_out_wavelengths < min_observed_lambda) & ~(this_out_pixel_mask);
+        this_normalized_flux_bw           = this_normalized_flux(ind_bw);
+        this_normalized_noise_variance_bw = this_normalized_noise_variance(ind_bw);
+        [n_bw, ~] = size(this_normalized_flux_bw);
+        % select redward region
+        ind_rw = (this_out_wavelengths > max_observed_lambda)  & ~(this_out_pixel_mask)
+        this_normalized_flux_rw           = this_normalized_flux(ind_rw);
+        this_normalized_noise_variance_rw = this_normalized_noise_variance(ind_rw);
+        [n_rw, ~] = size(this_normalized_flux_rw);
+
+        % calculate log likelihood of iid multivariate normal with
+        %   log N(y; mu, diag(V) + sigma^2 )
+        bw_log_likelihood = log_mvnpdf_iid(this_normalized_flux_bw, ...
+            bluewards_mu      * ones(n_bw, 1), ...
+            bluewards_sigma^2 * ones(n_bw, 1) + this_normalized_noise_variance_bw );
+        rw_log_likelihood = log_mvnpdf_iid(this_normalized_flux_rw, ...
+            redwards_mu      * ones(n_rw, 1), ...
+            redwards_sigma^2 * ones(n_rw, 1) + this_normalized_noise_variance_rw );
 
         ind = (this_rest_wavelengths >= min_lambda) & ...
             (this_rest_wavelengths <= max_lambda);
