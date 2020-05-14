@@ -1,10 +1,15 @@
 % spectrum_loss: computes the negative log likelihood for centered
 % flux y:
 %
-%     -log p(y | z, σ², M)
-%   = -log N(y; 0, MM' + diag(σ²)),
+%     -log p(y | Lyα z, σ², M, ω², c₀, τₒ, β)
+%   = -log N(y; 0, MM' + diag(σ² + (ω ∘ (c₀ + a(1 + Lyα z)))²)),
 %
-% and its derivative wrt M
+% where a(Lyα z) is the approximate absorption due to Lyman α at
+% redshift z:
+%
+%   a(z) = 1 - exp(-τ₀(1 + z)ᵝ)
+%
+% and its derivatives wrt M, log ω, log c₉, log τ₀, and log β
 
 function [nlog_p, dM, dlog_omega, dlog_c_0, dlog_tau_0, dlog_beta] = ...
       spectrum_loss(y, lya_1pz, noise_variance, M, omega2, c_0, tau_0, beta, ...
