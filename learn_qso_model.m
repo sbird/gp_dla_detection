@@ -110,14 +110,6 @@ num_quasars = numel(z_qsos);
 
 fprintf('Get rid of empty spectra, num_quasars = %i\n', num_quasars);
 
-% Filter out spectra with redshifts outside the training region
-ind = (z_qsos > z_qso_training_min_cut) & (z_qsos < z_qso_training_max_cut);
-
-fprintf("Filtering %g quasars for redshift\n", length(rest_fluxes) - nnz(ind));
-
-rest_fluxes          = rest_fluxes(ind, :);
-rest_noise_variances = rest_noise_variances(ind,:);
-
 % mask noisy pixels
 ind = (rest_noise_variances > max_noise_variance);
 
