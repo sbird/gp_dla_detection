@@ -28,24 +28,12 @@ for i = 1:num_quasars
   ind = (this_wavelengths >= (min_lambda * (z_qso_cut) + 1)) & ...
         (this_wavelengths <= (max_lambda * (z_qso_training_max_cut) + 1)) & ...
         (~this_pixel_mask);
-  %{
-  ind = (this_rest_wavelengths >= min_lambda) & ...
-        (this_rest_wavelengths <= max_lambda) & ...
-        (~this_pixel_mask);
-  %}
+
   % bit 3: not enough pixels available
   if (nnz(ind) < min_num_pixels)
     filter_flags(i) = bitset(filter_flags(i), 4, true);
     continue;
   end
-
-  ind = (this_wavelengths >= (loading_min_lambda * (z_qso_cut) + 1)) & ...
-        (this_wavelengths <= (loading_max_lambda * (z_qso_training_max_cut) + 1));
-
-  % add one pixel on either side
-  available_ind = find(~ind & ~this_pixel_mask);
-  ind(min(available_ind(available_ind > find(ind, 1, 'last' )))) = true;
-  ind(max(available_ind(available_ind < find(ind, 1, 'first')))) = true;
 
   all_wavelengths{i}    =    this_wavelengths;%no longer (ind)
   all_flux{i}           =           this_flux;
