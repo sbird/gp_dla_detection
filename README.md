@@ -78,7 +78,7 @@ The preprocessing steps are to:
 * truncate spectra to only contain pixels in the range [911, 1217]
   Angstroms QSO rest
 * normalize flux and noise variance by dividing by the median flux in
-  the range [1310, 1325] Angstroms QSO rest
+  the range [1176, 1256] Angstroms QSO rest
 
 Relevant parameters in `set_parameters` that can be tweaked if
 desired:
@@ -87,8 +87,8 @@ desired:
     min_num_pixels = 200;                         % minimum number of non-masked pixels
 
     % normalization parameters
-    normalization_min_lambda = 1310;              % range of rest wavelengths to use   Å
-    normalization_max_lambda = 1325;              %   for flux normalization
+    normalization_min_lambda = 1176;              % range of rest wavelengths to use   Å
+    normalization_max_lambda = 1256;              %   for flux normalization
 
     % file loading parameters
     loading_min_lambda = 910;                     % range of rest wavelengths to load  Å
@@ -157,11 +157,11 @@ Relevant parameters in `set_parameters` that can be tweaked if
 desired:
 
     % null model parameters
-    min_lambda         =  911.75;                 % range of rest wavelengths to       Å
-    max_lambda         = 1215.75;                 %   model
+    min_lambda         =     910;                 % range of rest wavelengths to       Å
+    max_lambda         =    3000;                 %   model
     dlambda            =    0.25;                 % separation of wavelength grid      Å
     k                  = 20;                      % rank of non-diagonal contribution
-    max_noise_variance = 1^2;                     % maximum pixel noise allowed during model training
+    max_noise_variance = 4^2;                     % maximum pixel noise allowed during model training
 
     % optimization parameters
     initial_c     = 0.1;                          % initial guess for c
@@ -187,7 +187,7 @@ Relevant parameters in `set_parameters` that can be tweaked if
 desired:
 
     % DLA model parameters: parameter samples
-    num_dla_samples     = 10000;                  % number of parameter samples
+    num_dla_samples     = 100000;                 % number of parameter samples
     alpha               = 0.9;                    % weight of KDE component in mixture
     uniform_min_log_nhi = 20.0;                   % range of column density samples    [cm⁻²]
     uniform_max_log_nhi = 23.0;                   % from uniform distribution
@@ -276,7 +276,6 @@ search:
         observed_wavelengths(lyman_limit, z_qso) / lya_wavelength - 1 + ...
         min_z_cut);
 
-When ready, the selected spectra can be processed with `process_qsos`.
 This script will write the results in
 `data/[release]/processed_qsos_[test_set_name].mat`.
 
