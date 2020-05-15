@@ -57,8 +57,8 @@ for i = 1:num_quasars
   this_flux(this_pixel_mask)           = nan;
   this_noise_variance(this_pixel_mask) = nan;
 
-  fprintf('processing quasar %i with lambda_size = %i %i ...\n', i, size(this_wavelengths))
-  
+  fprintf('processing quasar %i with lambda_size = %i %i ...\n', i, size(this_wavelengths));
+
   if all(size(this_wavelengths) == [0 0])
     is_empty(i, 1) = 1;
     continue;
@@ -76,7 +76,7 @@ for i = 1:num_quasars
   % indicator = lya_1pzs(i, :) <= (1 + z_qso);
   % lya_1pzs(i, :) = lya_1pzs(i, :) .* indicator;
 
-  % incldue all members in Lyman series to the forest
+  % include all members in Lyman series to the forest
   for j = 1:num_forest_lines
     this_transition_wavelength = all_transition_wavelengths(j);
 

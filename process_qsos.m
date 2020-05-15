@@ -199,7 +199,7 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         all_exceptions(quasar_ind, 1) = 1;
         continue;
     end
-    
+
     parfor i = 1:num_dla_samples       %variant redshift in quasars 
         z_qso = offset_samples_qso(i);
 
@@ -278,6 +278,10 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
 
         this_noise_variance(isinf(this_noise_variance)) = nanmean(this_noise_variance); %rare kludge to fix bad data
         
+        if nnz(this_rest_wavelengths) < 1
+            fprintf(' took %0.3fs.\n', toc);
+            continue
+        end
         fluxes{i}           = this_flux;
         rest_wavelengths{i} = this_rest_wavelengths;
         
@@ -314,6 +318,12 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         this_sample_log_priors_no_dla(1, i) = ...
             log(this_num_quasars - this_num_dlas) - log(this_num_quasars);
 
+        %sample_log_priors_dla(quasar_ind, z_list_ind) = log(.5);
+        %sample_log_priors_no_dla(quasar_ind, z_list_ind) = log(.5);
+
+        % fprintf_debug('\n');
+        fprintf_debug(' ...     p(   DLA | z_QSO)        : %0.3f\n',     this_p_dla);
+        fprintf_debug(' ...     p(no DLA | z_QSO)        : %0.3f\n', 1 - this_p_dla);
 
         % interpolate model onto given wavelengths
         this_mu = mu_interpolator( this_rest_wavelengths);
@@ -396,6 +406,10 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
             + bw_log_likelihood + rw_log_likelihood ...
             - occams;
 
+        fprintf_debug(' ... log p(D | z_QSO, no DLA)     : %0.2f\n', ...
+            this_sample_log_likelihoods_no_dla(1, i));
+
+        % Add
         if isempty(this_wavelengths)
             continue;
         end
@@ -503,7 +517,6 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     log_posteriors_dla_sub(quasar_ind) = log(mean(probabilities_dla_sub)) + max_log_likelihood_dla_sub;            %Expected
     log_posteriors_dla_sup(quasar_ind) = log(mean(probabilities_dla_sup)) + max_log_likelihood_dla_sup;            %Expected
 
-
     fprintf(' took %0.3fs.\n', toc);
     
     % z-estimation checking printing at runtime
@@ -517,6 +530,16 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
 %        save(['./checkpointing/curDLA_', optTagFull, '.mat'], 'log_posteriors_dla_sub', 'log_posteriors_dla_sup', 'log_posteriors_dla', 'log_posteriors_no_dla', 'z_true', 'dla_true', 'quasar_ind', 'quasar_num',...
 %            'sample_log_likelihoods_dla', 'sample_log_likelihoods_no_dla', 'sample_z_dlas', 'nhi_samples', 'offset_samples_qso', 'offset_samples', 'z_map', 'signal_to_noise', 'z_dla_map', 'n_hi_map');
 %    end
+    %fprintf_debug(' ... log p(D | z_QSO,    DLA)     : %0.2f\n', ...
+    %    log_likelihoods_dla(quasar_ind));
+    fprintf_debug(' ... log p(DLA | D, z_QSO)        : %0.2f\n', ...
+        log_posteriors_dla(quasar_ind));
+
+    fprintf(' took %0.3fs. (z_map = %0.4f)\n', toc,z_map(quasar_ind));
+    if mod(quasar_ind, 50) == 0
+        save(['./checkpointing/curDLA_', optTag, '.mat'], 'log_posteriors_dla_sub', 'log_posteriors_dla_sup', 'log_posteriors_dla', 'log_posteriors_no_dla', 'z_true', 'dla_true', 'quasar_ind', 'quasar_num',...
+'sample_z_dlas', 'nhi_samples', 'offset_samples_qso', 'offset_samples', 'z_map', 'signal_to_noise', 'z_dla_map', 'n_hi_map');
+    end
 end
 
 
@@ -545,7 +568,7 @@ variables_to_save = {'training_release', 'training_set_name', ...
     % 'sample_log_priors_no_dla', 'sample_log_priors_dla', ...
     % 'sample_log_likelihoods_no_dla', 'sample_log_likelihoods_dla', ...
 
-filename = sprintf('%s/processed_qsos_%s-%s_%d-%d-norm-%d-%d', ...
+filename = sprintf('%s/processed_qsos_%s-%s_%d-%d', ...
     processed_directory(release), ...
     test_set_name, optTag, ...
     qso_ind(1), qso_ind(1) + numel(qso_ind), ...
