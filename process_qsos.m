@@ -7,8 +7,22 @@
 % Dec 25, 2019: add Lyman series to the noise variance training
 %   s(z)     = 1 - exp(-effective_optical_depth) + c_0 
 % the mean values of Kim's effective optical depth
+% Apr 28: add occams razor for penalising the missing pixels,
+%   this factor is tuned to affect log likelihood in a range +- 500,
+%   this value could be effective to penalise every likelihoods for zQSO > zCIV
+%   the current implemetation is:
+%     likelihood - occams_factor * (1 - lambda_observed / (max_lambda - min_lambda) )
+%   and occams_factor is a tunable hyperparameter
+% 
+% May 11: out-of-range data penalty,
+%   adding additional log-likelihoods to the null model log likelihood,
+%   this additional log-likelihoods are:
+%     log N(y_bluewards; bluewards_mu, diag(V_bluewards) + bluewards_sigma^2 )
+%     log N(y_redwards;  redwards_mu,  diag(V_redwards)  + redwards_sigma^2 )
 prev_tau_0 = 0.0023;
 prev_beta  = 3.65;
+
+occams_factor = 0; % turn this to zero if you don't want the incomplete data penalty
 
 % load redshifts/DLA flags from training release
 prior_catalog = ...
@@ -39,10 +53,11 @@ prior = rmfield(prior, 'z_dlas');
 % load QSO model from training release
 variables_to_load = {'rest_wavelengths', 'mu', 'M', 'log_omega', ...
     'log_c_0', 'log_tau_0', 'log_beta'};
-load(sprintf('%s/learned_qso_model_%s',             ...
-    processed_directory(training_release), ...
-    training_set_name),                    ...
-    variables_to_load{:});
+load(sprintf('%s/learned_model_outdata_%s_norm_%d-%d',           ...
+     processed_directory(training_release), ...
+     training_set_name, ...
+     normalization_min_lambda, normalization_max_lambda),  ...
+     variables_to_load{:});
 
 % load DLA samples from training release
 variables_to_load = {'offset_samples', 'offset_samples_qso', 'log_nhi_samples', 'nhi_samples'};
@@ -119,6 +134,8 @@ fluxes                   = cell(length(z_list), 1);
 rest_wavelengths         = cell(length(z_list), 1);
 this_p_dlas              = zeros(length(z_list), 1);
 
+% this is just an array allow you to select a range
+% of quasars to run
 quasar_ind = 1;
 try
     load(['./checkpointing/curDLA_', optTag, '.mat']); %checkmarking code
@@ -224,6 +241,34 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         % computation
         this_unmasked_wavelengths = this_wavelengths(ind);
 
+        
+        % Normalise the observed flux for out-of-range model since the
+        % redward- and blueward- models were trained with normalisation.
+        %Find probability for out-of-range model
+        this_normalized_flux = this_out_flux / this_median; % since we've modified this_flux, we thus need to
+                                                            % use this_out_flux which is outside the parfor loop
+        this_normalized_noise_variance = this_out_noise_variance / this_median .^2;
+
+        % select blueward region
+        ind_bw = (this_out_wavelengths < min_observed_lambda) & ~(this_out_pixel_mask);
+        this_normalized_flux_bw           = this_normalized_flux(ind_bw);
+        this_normalized_noise_variance_bw = this_normalized_noise_variance(ind_bw);
+        [n_bw, ~] = size(this_normalized_flux_bw);
+        % select redward region
+        ind_rw = (this_out_wavelengths > max_observed_lambda)  & ~(this_out_pixel_mask)
+        this_normalized_flux_rw           = this_normalized_flux(ind_rw);
+        this_normalized_noise_variance_rw = this_normalized_noise_variance(ind_rw);
+        [n_rw, ~] = size(this_normalized_flux_rw);
+
+        % calculate log likelihood of iid multivariate normal with
+        %   log N(y; mu, diag(V) + sigma^2 )
+        bw_log_likelihood = log_mvnpdf_iid(this_normalized_flux_bw, ...
+            bluewards_mu      * ones(n_bw, 1), ...
+            bluewards_sigma^2 * ones(n_bw, 1) + this_normalized_noise_variance_bw );
+        rw_log_likelihood = log_mvnpdf_iid(this_normalized_flux_rw, ...
+            redwards_mu      * ones(n_rw, 1), ...
+            redwards_sigma^2 * ones(n_rw, 1) + this_normalized_noise_variance_rw );
+        
         ind = ind & (~this_pixel_mask);
 
         this_wavelengths      =      this_wavelengths(ind);
@@ -231,7 +276,7 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         this_flux             =             this_flux(ind);
         this_noise_variance   =   this_noise_variance(ind);
 
-        this_noise_variance(isinf(this_noise_variance)) = mean(this_noise_variance); %rare kludge to fix bad data
+        this_noise_variance(isinf(this_noise_variance)) = nanmean(this_noise_variance); %rare kludge to fix bad data
         
         if nnz(this_rest_wavelengths) < 1
             fprintf(' took %0.3fs.\n', toc);
@@ -351,15 +396,15 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         % now the null model likelihood is:
         % p(y | λ, zqso, v, ω, M_nodla) = N(y; μ .* a_lya, A_lya (K + Ω) A_lya + V)
         this_omega2 = this_omega2 .* lya_absorption.^2;
-        
+
+        occams = occams_factor * (1 - lambda_observed / (max_lambda - min_lambda) );
+
         % baseline: probability of no DLA model
         this_sample_log_likelihoods_no_dla(1, i) = ...
             log_mvnpdf_low_rank(this_flux, this_mu, this_M, ...
-            this_omega2 + this_noise_variance) + log(lambda_observed/ dlambda);
-        
-        % duplicated
-        % sample_log_posteriors_no_dla(quasar_ind, i) = ...
-        %     this_sample_log_priors_no_dla(1, i) + this_sample_log_likelihoods_no_dla(1, i);
+            this_omega2 + this_noise_variance) ...
+            + bw_log_likelihood + rw_log_likelihood ...
+            - occams;
 
         fprintf_debug(' ... log p(D | z_QSO, no DLA)     : %0.2f\n', ...
             this_sample_log_likelihoods_no_dla(1, i));
@@ -420,13 +465,13 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         % Add a penalty for short spectra: the expected reduced chi^2 of each spectral pixel that would have been observed.
         this_sample_log_likelihoods_dla(1, i) = ...
             log_mvnpdf_low_rank(this_flux, dla_mu, dla_M, ...
-            dla_omega2 + this_noise_variance) + log(lambda_observed/ dlambda);
-        
-        % duplicated
-        % sample_log_posteriors_dla(quasar_ind, i) = ...
-        %     this_sample_log_priors_dla(1, i) + this_sample_log_likelihoods_dla(1, i);
+            dla_omega2 + this_noise_variance) ...
+            + bw_log_likelihood + rw_log_likelihood ...
+            - occams;
     end
 
+    % to re-evaluate the model posterior for P(DLA| logNHI > 20.3)
+    % we need to select the samples with > DLA_cut and re-calculate the Bayesian model selection
     DLA_cut = 20.3;
     sub20pt3_ind = (log_nhi_samples < DLA_cut);
 
@@ -472,6 +517,19 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     log_posteriors_dla_sub(quasar_ind) = log(mean(probabilities_dla_sub)) + max_log_likelihood_dla_sub;            %Expected
     log_posteriors_dla_sup(quasar_ind) = log(mean(probabilities_dla_sup)) + max_log_likelihood_dla_sup;            %Expected
 
+    fprintf(' took %0.3fs.\n', toc);
+    
+    % z-estimation checking printing at runtime
+    zdiff = z_map(quasar_ind) - z_qsos(quasar_num);
+    if mod(quasar_ind, 1) == 0
+        t = toc;
+        fprintf('Done QSO %i of %i in %0.3f s. True z_QSO = %0.4f, I=%d map=%0.4f dif = %.04f\n', ...
+            quasar_ind, num_quasars, t, z_qsos(quasar_num), I, z_map(quasar_ind), zdiff);
+    end    
+%    if mod(quasar_ind, 50) == 0
+%        save(['./checkpointing/curDLA_', optTagFull, '.mat'], 'log_posteriors_dla_sub', 'log_posteriors_dla_sup', 'log_posteriors_dla', 'log_posteriors_no_dla', 'z_true', 'dla_true', 'quasar_ind', 'quasar_num',...
+%            'sample_log_likelihoods_dla', 'sample_log_likelihoods_no_dla', 'sample_z_dlas', 'nhi_samples', 'offset_samples_qso', 'offset_samples', 'z_map', 'signal_to_noise', 'z_dla_map', 'n_hi_map');
+%    end
     %fprintf_debug(' ... log p(D | z_QSO,    DLA)     : %0.2f\n', ...
     %    log_likelihoods_dla(quasar_ind));
     fprintf_debug(' ... log p(DLA | D, z_QSO)        : %0.2f\n', ...
@@ -501,15 +559,19 @@ p_dlas    = 1 - p_no_dlas;
 variables_to_save = {'training_release', 'training_set_name', ...
     'dla_catalog_name', 'release', ...
     'test_set_name', 'test_ind', 'prior_z_qso_increase', ...
-    'max_z_cut', 'num_lines', ... %'min_z_dlas', 'max_z_dlas', ... % save memory
+    'max_z_cut', 'num_lines', 'min_z_dlas', 'max_z_dlas', ... % you need to save DLA search length to compute CDDF
     'sample_log_posteriors_no_dla', 'sample_log_posteriors_dla', ...
     'log_posteriors_no_dla', 'log_posteriors_dla', ...
     'model_posteriors', 'p_no_dlas', ...
     'p_dlas', 'z_map', 'z_true', 'dla_true', 'z_dla_map', 'n_hi_map', 'signal_to_noise', 'all_thing_ids'};
 
+    % 'sample_log_priors_no_dla', 'sample_log_priors_dla', ...
+    % 'sample_log_likelihoods_no_dla', 'sample_log_likelihoods_dla', ...
+
 filename = sprintf('%s/processed_qsos_%s-%s_%d-%d', ...
     processed_directory(release), ...
     test_set_name, optTag, ...
-    qso_ind(1), qso_ind(1) + numel(qso_ind));
+    qso_ind(1), qso_ind(1) + numel(qso_ind), ...
+    normalization_min_lambda, normalization_max_lambda);
 
 save(filename, variables_to_save{:}, '-v7.3');

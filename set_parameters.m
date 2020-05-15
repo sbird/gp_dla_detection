@@ -25,31 +25,31 @@ observed_wavelengths = ...
 
 % file loading parameters: this is no longer used.
 loading_min_lambda = 700;                   % range of rest wavelengths to load  Å
-loading_max_lambda = 2400;                  % This maximum is set so we include CIV.
+loading_max_lambda = 5000;                  % This maximum is set so we include CIV.
 % The maximum allowed is set so that even if the peak is redshifted off the end, the
 % quasar still has data in the range
 
 % preprocessing parameters
 z_qso_cut      = 2.15;                        % filter out QSOs with z less than this threshold
-z_qso_training_max_cut = 3.5;                 % roughly 95% of training data occurs before this redshift; assuming for normalization purposes (move to set_parameters when pleased)
+z_qso_training_max_cut = 5;                   % roughly 95% of training data occurs before this redshift; assuming for normalization purposes (move to set_parameters when pleased)
 min_num_pixels = 400;                         % minimum number of non-masked pixels
 
 % normalization parameters
-normalization_min_lambda = 1325;              % range of rest wavelengths to use   Å
-normalization_max_lambda = 1390;              %   for flux normalization
+% I use 1216 is basically because I want integer in my saved filenames
+normalization_min_lambda = 1216 - 40;              % range of rest wavelengths to use   Å
+normalization_max_lambda = 1216 + 40;              %   for flux normalization
 
 % null model parameters
 min_lambda         =  910;                    % range of rest wavelengths to       Å
-max_lambda         = 1600;                    % model
+max_lambda         = 3000;                    %   model
 dlambda            = 0.25;                    % separation of wavelength grid      Å
 k                  = 20;                      % rank of non-diagonal contribution
-max_noise_variance = 1^2;                     % maximum pixel noise allowed during model training
+max_noise_variance = 4^2;                     % maximum pixel noise allowed during model training
 
 % optimization parameters
-% Apr 10: change to optimal values in multi-DLA paper
-initial_c_0   = 0.3050;                       % initial guess for c₀
-initial_tau_0 = 0.000164;                     % initial guess for τ₀
-initial_beta  = 5.2714;                       % initial guess for β
+initial_c_0   =    0.1;                       % initial guess for c₀
+initial_tau_0 = 0.0023;                       % initial guess for τ₀
+initial_beta  =   3.65;                       % initial guess for β
 minFunc_options =               ...           % optimization options for model fitting
     struct('MaxIter',     2000, ...
            'MaxFunEvals', 4000);
