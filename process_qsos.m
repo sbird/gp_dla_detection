@@ -124,6 +124,7 @@ dla_true                      = nan(num_quasars, 1);
 z_map                         = nan(num_quasars, 1);
 z_dla_map                     = nan(num_quasars, 1);
 n_hi_map                      = nan(num_quasars, 1);
+log_nhi_map                   = nan(num_quasars, 1);
 signal_to_noise               = nan(num_quasars, 1);
 
 c_0   = exp(log_c_0);
@@ -510,6 +511,7 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
     [~, I] = nanmax(probabilities_dla);
     z_dla_map(quasar_ind) = used_z_dla(I);
     n_hi_map(quasar_ind) = nhi_samples(I);
+    log_nhi_map(quasar_ind) = log_nhi_samples(I);
 
     log_posteriors_no_dla(quasar_ind) = log(mean(probabilities_no_dla)) + max_log_likelihood_no_dla;   %Expected
     log_posteriors_dla(quasar_ind) = log(mean(probabilities_dla)) + max_log_likelihood_dla;            %Expected
@@ -525,19 +527,14 @@ for quasar_ind = q_ind_start:num_quasars %quasar list
         fprintf('Done QSO %i of %i in %0.3f s. True z_QSO = %0.4f, I=%d map=%0.4f dif = %.04f\n', ...
             quasar_ind, num_quasars, t, z_qsos(quasar_num), I, z_map(quasar_ind), zdiff);
     end    
-%    if mod(quasar_ind, 50) == 0
-%        save(['./checkpointing/curDLA_', optTagFull, '.mat'], 'log_posteriors_dla_sub', 'log_posteriors_dla_sup', 'log_posteriors_dla', 'log_posteriors_no_dla', 'z_true', 'dla_true', 'quasar_ind', 'quasar_num',...
-%            'sample_log_likelihoods_dla', 'sample_log_likelihoods_no_dla', 'sample_z_dlas', 'nhi_samples', 'offset_samples_qso', 'offset_samples', 'z_map', 'signal_to_noise', 'z_dla_map', 'n_hi_map');
-%    end
-    %fprintf_debug(' ... log p(D | z_QSO,    DLA)     : %0.2f\n', ...
-    %    log_likelihoods_dla(quasar_ind));
+
     fprintf_debug(' ... log p(DLA | D, z_QSO)        : %0.2f\n', ...
         log_posteriors_dla(quasar_ind));
 
     fprintf(' took %0.3fs. (z_map = %0.4f)\n', toc,z_map(quasar_ind));
     if mod(quasar_ind, 50) == 0
         save(['./checkpointing/curDLA_', optTag, '.mat'], 'log_posteriors_dla_sub', 'log_posteriors_dla_sup', 'log_posteriors_dla', 'log_posteriors_no_dla', 'z_true', 'dla_true', 'quasar_ind', 'quasar_num',...
-'sample_z_dlas', 'nhi_samples', 'offset_samples_qso', 'offset_samples', 'z_map', 'signal_to_noise', 'z_dla_map', 'n_hi_map');
+'used_z_dla', 'nhi_samples', 'offset_samples_qso', 'offset_samples', 'z_map', 'signal_to_noise', 'z_dla_map', 'n_hi_map');
     end
 end
 
@@ -562,8 +559,10 @@ variables_to_save = {'training_release', 'training_set_name', ...
     'sample_log_posteriors_no_dla', 'sample_log_posteriors_dla', ...
     'sample_log_posteriors_dla_sub', 'sample_log_posteriors_dla_sup', ...
     'log_posteriors_no_dla', 'log_posteriors_dla', ...
+    'log_posteriors_dla_sub', 'log_posteriors_dla_sup', ...
     'model_posteriors', 'p_no_dlas', ...
-    'p_dlas', 'z_map', 'z_true', 'dla_true', 'z_dla_map', 'n_hi_map', 'signal_to_noise', 'all_thing_ids'};
+    'p_dlas', 'z_map', 'z_true', 'dla_true', 'z_dla_map', 'n_hi_map', 'log_nhi_map',...
+    'signal_to_noise', 'all_thing_ids'};
 
     % 'sample_log_priors_no_dla', 'sample_log_priors_dla', ...
     % 'sample_log_likelihoods_no_dla', 'sample_log_likelihoods_dla', ...
