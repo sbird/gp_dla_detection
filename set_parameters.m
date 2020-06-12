@@ -51,7 +51,7 @@ initial_c_0   =    0.1;                       % initial guess for c₀
 initial_tau_0 = 0.0023;                       % initial guess for τ₀
 initial_beta  =   3.65;                       % initial guess for β
 minFunc_options =               ...           % optimization options for model fitting
-    struct('MaxIter',     1000, ...
+    struct('MaxIter',     1500, ...
            'MaxFunEvals', 4000);
 
 % DLA model parameters: parameter samples
